@@ -948,20 +948,27 @@ export default function KalkulatorEmasPage() {
         <div className="mb-4">
           <p className="mb-2 text-xs font-medium text-gray-500">Karat Preset (klik untuk tambah baris):</p>
           <div className="flex flex-wrap gap-1.5">
-            {["6K", "8K", "9K", "16K", "17K", "18K", "22K", "24K"].map((k) => (
-              <button
-                key={k}
-                onClick={() => {
-                  setRows((prev) => [
-                    ...prev,
-                    { id: generateId(), label: k, hargaPerGram: "", berat: "", addonId: "" },
-                  ]);
-                }}
-                className="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
-              >
-                {k}
-              </button>
-            ))}
+            {["6K", "8K", "9K", "16K", "17K", "18K", "22K", "24K"].map((k) => {
+              const isUsed = rows.some((r) => r.label === k);
+              return (
+                <button
+                  key={k}
+                  onClick={() => {
+                    setRows((prev) => [
+                      ...prev,
+                      { id: generateId(), label: k, hargaPerGram: "", berat: "", addonId: "" },
+                    ]);
+                  }}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+                    isUsed
+                      ? "border-teal-500 bg-teal-500 text-white"
+                      : "border-gray-200 bg-gray-50 text-gray-600 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
+                  }`}
+                >
+                  {k} {isUsed && "✓"}
+                </button>
+              );
+            })}
           </div>
         </div>
 
