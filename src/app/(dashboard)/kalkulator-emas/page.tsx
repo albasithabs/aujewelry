@@ -425,13 +425,8 @@ export default function KalkulatorEmasPage() {
     const bufferAmount = hargaNota * (bufferPersen / 100);
     const targetDanaDiterima = hargaNota + addonHarga + bufferAmount;
 
-    // Admin rate
-    let adminRate = 0;
-    if (shopeeConfig.statusPenjual === "star") {
-      adminRate = SHOPEE_ADMIN_RATE;
-    } else {
-      adminRate = shopeeConfig.jumlahPesanan === "lte50" ? 0 : SHOPEE_ADMIN_RATE;
-    }
+    // Admin rate (4.25% untuk semua status)
+    const adminRate = SHOPEE_ADMIN_RATE;
 
     // GO XTRA
     const goXtraRate = shopeeConfig.ikutGoXtra ? SHOPEE_GO_XTRA_RATE : 0;
@@ -674,27 +669,7 @@ export default function KalkulatorEmasPage() {
                     </div>
                   </div>
 
-                  {shopeeConfig.statusPenjual === "non-star" && (
-                    <div>
-                      <p className="mb-1.5 text-xs font-medium text-gray-600">Jumlah Pesanan</p>
-                      <div className="flex flex-wrap gap-3">
-                        <RadioOption
-                          name="shopee-pesanan"
-                          value="lte50"
-                          checked={shopeeConfig.jumlahPesanan === "lte50"}
-                          onChange={() => setShopeeConfig((c) => ({ ...c, jumlahPesanan: "lte50" }))}
-                          label="≤ 50 (Admin 0%)"
-                        />
-                        <RadioOption
-                          name="shopee-pesanan"
-                          value="gt50"
-                          checked={shopeeConfig.jumlahPesanan === "gt50"}
-                          onChange={() => setShopeeConfig((c) => ({ ...c, jumlahPesanan: "gt50" }))}
-                          label="> 50 (Admin 4.25%)"
-                        />
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="border-t border-teal-300/50 pt-3 space-y-2.5">
                     <p className="text-xs font-medium text-gray-600">Program & Layanan</p>
