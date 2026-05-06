@@ -7,11 +7,18 @@ import { Plus, Trash2, RotateCcw, Copy, Check, Info, ChevronDown, ChevronUp } fr
 // Types
 // ---------------------------------------------------------------------------
 
+interface AddonItem {
+  id: string;
+  nama: string;
+  harga: number;
+}
+
 interface BarisItem {
   id: string;
   label: string;
   hargaPerGram: number | "";
   berat: number | "";
+  addonId: string; // "" = tanpa addon
 }
 
 interface BiayaPlatform {
@@ -42,6 +49,8 @@ interface HasilBaris {
   berat: number;
   totalSebelum: number;
   hargaNota: number;
+  addonNama: string;
+  addonHarga: number;
   shopee: BiayaPlatform;
   tiktok: BiayaPlatform;
 }
@@ -244,12 +253,21 @@ export default function KalkulatorEmasPage() {
   // Buffer markup untuk fluktuasi harga emas
   const [bufferPersen, setBufferPersen] = useState(0);
 
+  // Addon box/packaging
+  const [addonList, setAddonList] = useState<AddonItem[]>([
+    { id: "box-au", nama: "BOX AU", harga: 26000 },
+    { id: "box-au-press", nama: "BOX AU PRESS", harga: 31000 },
+    { id: "shanghai-set", nama: "SHANGHAI SET", harga: 31000 },
+    { id: "box-exclusive", nama: "BOX EXCLUSIVE", harga: 80000 },
+  ]);
+  const [showAddonSettings, setShowAddonSettings] = useState(false);
+
   // Collapsible settings
   const [showSettings, setShowSettings] = useState(true);
 
   // Rows
   const [rows, setRows] = useState<BarisItem[]>([
-    { id: generateId(), label: "", hargaPerGram: "", berat: "" },
+    { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "" },
   ]);
 
   // ---------------------------------------------------------------------------
@@ -259,7 +277,7 @@ export default function KalkulatorEmasPage() {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: generateId(), label: "", hargaPerGram: "", berat: "" },
+      { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "" },
     ]);
   };
 
@@ -273,6 +291,7 @@ export default function KalkulatorEmasPage() {
       prev.map((r) => {
         if (r.id !== id) return r;
         if (field === "label") return { ...r, label: value as string };
+        if (field === "addonId") return { ...r, addonId: value as string };
         if (field === "hargaPerGram") {
           const num = value === "" ? "" : Number(value);
           return { ...r, hargaPerGram: num === 0 ? "" : num };
@@ -287,7 +306,7 @@ export default function KalkulatorEmasPage() {
   };
 
   const resetAll = () => {
-    setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "" }]);
+    setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "" }]);
     setShopeeConfig({
       statusPenjual: "star",
       jumlahPesanan: "lte50",
@@ -303,14 +322,40 @@ export default function KalkulatorEmasPage() {
     setBufferPersen(0);
   };
 
+  // Addon management
+  const addAddon = () => {
+    setAddonList((prev) => [
+      ...prev,
+      { id: generateId(), nama: "", harga: 0 },
+    ]);
+  };
+
+  const removeAddon = (id: string) => {
+    setAddonList((prev) => prev.filter((a) => a.id !== id));
+    // Remove addon from rows that use it
+    setRows((prev) =>
+      prev.map((r) => (r.addonId === id ? { ...r, addonId: "" } : r))
+    );
+  };
+
+  const updateAddon = (id: string, field: "nama" | "harga", value: string | number) => {
+    setAddonList((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a;
+        if (field === "nama") return { ...a, nama: value as string };
+        return { ...a, harga: Number(value) || 0 };
+      })
+    );
+  };
+
   // ---------------------------------------------------------------------------
   // Calculation
   // ---------------------------------------------------------------------------
 
-  function calcShopee(hargaNota: number): BiayaPlatform {
-    // Buffer: target dana diterima = harga nota + buffer
+  function calcShopee(hargaNota: number, addonHarga: number = 0): BiayaPlatform {
+    // Buffer: target dana diterima = harga nota + addon + buffer
     const bufferAmount = hargaNota * (bufferPersen / 100);
-    const targetDanaDiterima = hargaNota + bufferAmount;
+    const targetDanaDiterima = hargaNota + addonHarga + bufferAmount;
 
     // Admin rate
     let adminRate = 0;
@@ -393,10 +438,10 @@ export default function KalkulatorEmasPage() {
     };
   }
 
-  function calcTiktok(hargaNota: number): BiayaPlatform {
-    // Buffer: target dana diterima = harga nota + buffer
+  function calcTiktok(hargaNota: number, addonHarga: number = 0): BiayaPlatform {
+    // Buffer: target dana diterima = harga nota + addon + buffer
     const bufferAmount = hargaNota * (bufferPersen / 100);
-    const targetDanaDiterima = hargaNota + bufferAmount;
+    const targetDanaDiterima = hargaNota + addonHarga + bufferAmount;
 
     const komisiRate = TIKTOK_KOMISI_RATE;
     const paymentRate = TIKTOK_PAYMENT_RATE;
@@ -448,6 +493,11 @@ export default function KalkulatorEmasPage() {
     const totalSebelum = harga * berat;
     const hargaNota = Math.round(totalSebelum);
 
+    // Find addon
+    const addon = row.addonId ? addonList.find((a) => a.id === row.addonId) : null;
+    const addonHarga = addon ? addon.harga : 0;
+    const addonNama = addon ? addon.nama : "";
+
     return {
       id: row.id,
       label: row.label || `Baris ${idx + 1}`,
@@ -455,8 +505,10 @@ export default function KalkulatorEmasPage() {
       berat,
       totalSebelum,
       hargaNota,
-      shopee: calcShopee(hargaNota),
-      tiktok: calcTiktok(hargaNota),
+      addonNama,
+      addonHarga,
+      shopee: calcShopee(hargaNota, addonHarga),
+      tiktok: calcTiktok(hargaNota, addonHarga),
     };
   }
 
@@ -691,11 +743,83 @@ export default function KalkulatorEmasPage() {
               )}
             </div>
 
+            {/* Addon Settings */}
+            <div className="mt-5 rounded-lg border border-purple-200 bg-purple-50/50 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500 text-xs font-bold text-white">B</div>
+                  <span className="text-sm font-bold text-gray-800">Addon / Box</span>
+                </div>
+                <button
+                  onClick={() => setShowAddonSettings(!showAddonSettings)}
+                  className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+                >
+                  {showAddonSettings ? "Tutup" : "Edit Addon"}
+                </button>
+              </div>
+              <p className="mb-3 text-xs text-gray-500">
+                Biaya addon (box, packaging, dll) akan ditambahkan ke target dana diterima sehingga harga jual final sudah termasuk biaya addon.
+              </p>
+
+              {/* Addon list preview */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {addonList.map((addon) => (
+                  <span
+                    key={addon.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-1 text-xs font-medium text-purple-700"
+                  >
+                    {addon.nama}: {formatRupiah(addon.harga)}
+                  </span>
+                ))}
+              </div>
+
+              {/* Editable addon list */}
+              {showAddonSettings && (
+                <div className="space-y-2 border-t border-purple-200 pt-3">
+                  {addonList.map((addon) => (
+                    <div key={addon.id} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={addon.nama}
+                        onChange={(e) => updateAddon(addon.id, "nama", e.target.value)}
+                        placeholder="Nama addon"
+                        className="flex-1 rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                      />
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={addon.harga}
+                          onChange={(e) => updateAddon(addon.id, "harga", e.target.value)}
+                          className="w-32 rounded-lg border border-purple-200 bg-white py-2 pl-8 pr-3 text-sm text-gray-800 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                        />
+                      </div>
+                      <button
+                        onClick={() => removeAddon(addon.id)}
+                        className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                        title="Hapus addon"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={addAddon}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-purple-300 px-3 py-2 text-xs font-medium text-purple-600 transition hover:bg-purple-100"
+                  >
+                    <Plus size={14} />
+                    Tambah Addon Baru
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Explanation */}
             <div className="mt-4 rounded-lg bg-blue-50 px-4 py-3">
               <p className="text-xs text-blue-700">
                 <strong>Cara kerja:</strong> Sistem menghitung harga jual (FINAL) sehingga setelah dipotong <em>semua</em> biaya platform,
-                dana yang Anda terima = Harga Nota{bufferPersen > 0 ? ` + buffer ${bufferPersen}%` : ""}. Biaya yang memiliki cap/maksimum juga diperhitungkan secara akurat.
+                dana yang Anda terima = Harga Nota{bufferPersen > 0 ? ` + buffer ${bufferPersen}%` : ""}{addonList.length > 0 ? " + biaya addon (jika dipilih)" : ""}. Biaya yang memiliki cap/maksimum juga diperhitungkan secara akurat.
               </p>
             </div>
           </div>
@@ -734,7 +858,7 @@ export default function KalkulatorEmasPage() {
                 onClick={() => {
                   setRows((prev) => [
                     ...prev,
-                    { id: generateId(), label: k, hargaPerGram: "", berat: "" },
+                    { id: generateId(), label: k, hargaPerGram: "", berat: "", addonId: "" },
                   ]);
                 }}
                 className="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700"
@@ -746,10 +870,11 @@ export default function KalkulatorEmasPage() {
         </div>
 
         {/* Table Header */}
-        <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
+        <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_0.8fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
           <span className="text-xs font-medium text-gray-400">Kategori / Label</span>
           <span className="text-xs font-medium text-gray-400">Harga per Gram (Rp)</span>
           <span className="text-xs font-medium text-gray-400">Berat (gram)</span>
+          <span className="text-xs font-medium text-gray-400">Addon / Box</span>
           <span></span>
         </div>
 
@@ -758,7 +883,7 @@ export default function KalkulatorEmasPage() {
           {rows.map((row, idx) => (
             <div
               key={row.id}
-              className="grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:grid-cols-[1fr_1fr_1fr_40px] sm:items-center sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0"
+              className="grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:grid-cols-[1fr_1fr_0.8fr_1fr_40px] sm:items-center sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0"
             >
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Kategori / Label</label>
@@ -798,6 +923,21 @@ export default function KalkulatorEmasPage() {
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">gr</span>
                 </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-400 sm:hidden">Addon / Box</label>
+                <select
+                  value={row.addonId}
+                  onChange={(e) => updateRow(row.id, "addonId" as keyof BarisItem, e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                >
+                  <option value="">Tanpa Box</option>
+                  {addonList.map((addon) => (
+                    <option key={addon.id} value={addon.id}>
+                      {addon.nama} ({formatRupiah(addon.harga)})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center justify-end sm:justify-center">
                 <button
@@ -844,6 +984,12 @@ export default function KalkulatorEmasPage() {
                     <span className="text-sm text-gray-500">Harga Nota (dibulatkan)</span>
                     <span className="text-sm font-semibold text-gray-800">{formatRupiah(r.hargaNota)}</span>
                   </div>
+                  {r.addonHarga > 0 && (
+                    <div className="flex items-center justify-between rounded bg-purple-50 px-2 py-1">
+                      <span className="text-sm text-purple-600">Addon: {r.addonNama}</span>
+                      <span className="text-sm font-semibold text-purple-700">+ {formatRupiah(r.addonHarga)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-dashed border-gray-200 my-3" />
@@ -986,6 +1132,7 @@ export default function KalkulatorEmasPage() {
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Produk</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Berat</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Harga Nota</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-purple-500">Addon</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-teal-600">Shopee</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">TikTok</th>
                     </tr>
@@ -996,6 +1143,9 @@ export default function KalkulatorEmasPage() {
                         <td className="px-3 py-2 font-medium text-gray-800">{r.label}</td>
                         <td className="px-3 py-2 text-right text-gray-600">{r.berat} gr</td>
                         <td className="px-3 py-2 text-right text-gray-700">{formatRupiah(r.hargaNota)}</td>
+                        <td className="px-3 py-2 text-left text-xs text-purple-600">
+                          {r.addonHarga > 0 ? `${r.addonNama}` : "-"}
+                        </td>
                         <td className="px-3 py-2 text-right font-semibold text-teal-700">{formatRupiah(r.shopee.hargaJualFinal)}</td>
                         <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatRupiah(r.tiktok.hargaJualFinal)}</td>
                       </tr>
@@ -1010,6 +1160,7 @@ export default function KalkulatorEmasPage() {
                       <td className="px-3 py-2 text-right font-semibold text-gray-800">
                         {formatRupiah(results.reduce((s, r) => s + r.hargaNota, 0))}
                       </td>
+                      <td className="px-3 py-2"></td>
                       <td className="px-3 py-2 text-right font-bold text-teal-700">
                         {formatRupiah(results.reduce((s, r) => s + r.shopee.hargaJualFinal, 0))}
                       </td>
