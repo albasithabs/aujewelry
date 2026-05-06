@@ -721,7 +721,7 @@ export default function KalkulatorEmasPage() {
                 />
                 <span className="text-sm text-gray-600">%</span>
                 <div className="ml-auto flex gap-1.5">
-                  {[0, 1, 2, 3, 5, 10].map((v) => (
+                  {[0, 1, 2, 3, 5].map((v) => (
                     <button
                       key={v}
                       onClick={() => setBufferPersen(v)}
