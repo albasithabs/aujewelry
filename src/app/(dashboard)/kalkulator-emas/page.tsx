@@ -192,7 +192,7 @@ function RupiahInput({
         value={displayValue}
         onChange={handleChange}
         placeholder={placeholder || "0"}
-        className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+        className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
       />
     </div>
   );
@@ -988,7 +988,7 @@ export default function KalkulatorEmasPage() {
                   value={row.label}
                   onChange={(e) => updateRow(row.id, "label", e.target.value)}
                   placeholder={`Baris ${idx + 1} (misal: 17K)`}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 />
               </div>
               <div>
@@ -1009,7 +1009,7 @@ export default function KalkulatorEmasPage() {
                     value={row.berat}
                     onChange={(e) => updateRow(row.id, "berat", e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-8 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-8 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                   />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">gr</span>
                 </div>
@@ -1019,7 +1019,7 @@ export default function KalkulatorEmasPage() {
                 <select
                   value={row.addonId}
                   onChange={(e) => updateRow(row.id, "addonId" as keyof BarisItem, e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                 >
                   <option value="">Tanpa Box</option>
                   {addonList.map((addon) => (
