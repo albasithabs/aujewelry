@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Plus, Trash2, RotateCcw, Copy, Check, Info, ChevronDown, ChevronUp } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -130,6 +130,71 @@ function CopyBtn({ text }: { text: string }) {
       {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
       {copied ? "Copied" : "Copy"}
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Rupiah input with thousand separator
+// ---------------------------------------------------------------------------
+
+function formatThousand(num: number | ""): string {
+  if (num === "" || num === 0) return "";
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function parseThousand(str: string): number | "" {
+  const cleaned = str.replace(/\./g, "");
+  if (cleaned === "") return "";
+  const num = Number(cleaned);
+  return isNaN(num) ? "" : num;
+}
+
+function RupiahInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: number | "";
+  onChange: (val: number | "") => void;
+  placeholder?: string;
+}) {
+  const [displayValue, setDisplayValue] = useState(formatThousand(value));
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value.replace(/[^0-9.]/g, "").replace(/\./g, "");
+      if (raw === "") {
+        setDisplayValue("");
+        onChange("");
+        return;
+      }
+      const num = Number(raw);
+      if (!isNaN(num)) {
+        setDisplayValue(num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+        onChange(num === 0 ? "" : num);
+      }
+    },
+    [onChange]
+  );
+
+  // Sync display when value changes externally (e.g. reset)
+  const formatted = formatThousand(value);
+  if (formatted !== displayValue && value !== parseThousand(displayValue)) {
+    setDisplayValue(formatted);
+  }
+
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={displayValue}
+        onChange={handleChange}
+        placeholder={placeholder || "0"}
+        className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+      />
+    </div>
   );
 }
 
@@ -897,17 +962,11 @@ export default function KalkulatorEmasPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga per Gram (Rp)</label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={row.hargaPerGram}
-                    onChange={(e) => updateRow(row.id, "hargaPerGram", e.target.value)}
-                    placeholder="0"
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                  />
-                </div>
+                <RupiahInput
+                  value={row.hargaPerGram}
+                  onChange={(val) => updateRow(row.id, "hargaPerGram", val === "" ? "" : val)}
+                  placeholder="1.640.000"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Berat (gram)</label>
