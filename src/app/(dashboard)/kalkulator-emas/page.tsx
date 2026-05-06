@@ -315,6 +315,9 @@ export default function KalkulatorEmasPage() {
     ikutFlashSale: false,
   });
 
+  // Platform toggle
+  const [activePlatform, setActivePlatform] = useState<"shopee" | "tiktok">("shopee");
+
   // Buffer markup untuk fluktuasi harga emas
   const [bufferPersen, setBufferPersen] = useState(0);
 
@@ -595,6 +598,30 @@ export default function KalkulatorEmasPage() {
         </p>
       </div>
 
+      {/* Platform Toggle */}
+      <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm">
+        <button
+          onClick={() => setActivePlatform("shopee")}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+            activePlatform === "shopee"
+              ? "bg-teal-600 text-white shadow-sm"
+              : "text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          Shopee
+        </button>
+        <button
+          onClick={() => setActivePlatform("tiktok")}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+            activePlatform === "tiktok"
+              ? "bg-gray-900 text-white shadow-sm"
+              : "text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          TikTok Shop
+        </button>
+      </div>
+
       {/* Platform Settings */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <button
@@ -613,8 +640,9 @@ export default function KalkulatorEmasPage() {
 
         {showSettings && (
           <div className="border-t border-gray-100 px-5 pb-5">
-            <div className="grid gap-5 pt-4 lg:grid-cols-2">
+            <div className="grid gap-5 pt-4">
               {/* ---- SHOPEE ---- */}
+              {activePlatform === "shopee" && (
               <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-xs font-bold text-white">S</div>
@@ -711,8 +739,10 @@ export default function KalkulatorEmasPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* ---- TIKTOK SHOP ---- */}
+              {activePlatform === "tiktok" && (
               <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-900 text-xs font-bold text-white">T</div>
@@ -762,6 +792,7 @@ export default function KalkulatorEmasPage() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Buffer Markup */}
@@ -1053,9 +1084,8 @@ export default function KalkulatorEmasPage() {
 
                 <div className="border-t border-dashed border-gray-200 my-3" />
 
-                {/* Platform comparison */}
-                <div className="grid gap-4 lg:grid-cols-2">
-                  {/* ---- SHOPEE RESULT ---- */}
+                {/* Platform result */}
+                {activePlatform === "shopee" && (
                   <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <div className="flex h-6 w-6 items-center justify-center rounded bg-teal-600 text-xs font-bold text-white">S</div>
@@ -1112,8 +1142,9 @@ export default function KalkulatorEmasPage() {
                       )}
                     </div>
                   </div>
+                )}
 
-                  {/* ---- TIKTOK RESULT ---- */}
+                {activePlatform === "tiktok" && (
                   <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <div className="flex h-6 w-6 items-center justify-center rounded bg-gray-900 text-xs font-bold text-white">T</div>
@@ -1164,74 +1195,12 @@ export default function KalkulatorEmasPage() {
                       )}
                     </div>
                   </div>
-                </div>
-
-                {/* Comparison */}
-                <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2">
-                  <p className="text-[11px] text-blue-600">
-                    {r.tiktok.hargaJualFinal > r.shopee.hargaJualFinal
-                      ? `Harga jual TikTok Shop lebih tinggi ${formatRupiah(r.tiktok.hargaJualFinal - r.shopee.hargaJualFinal)} dari Shopee karena total biaya lebih besar.`
-                      : r.shopee.hargaJualFinal > r.tiktok.hargaJualFinal
-                        ? `Harga jual Shopee lebih tinggi ${formatRupiah(r.shopee.hargaJualFinal - r.tiktok.hargaJualFinal)} dari TikTok Shop karena total biaya lebih besar.`
-                        : "Harga jual sama di kedua platform."}
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           ))}
 
-          {/* Summary Table */}
-          {results.length > 1 && (
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-sm font-semibold text-gray-800">Ringkasan Semua Produk</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Produk</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Berat</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Harga Nota</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-purple-500">Addon</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-teal-600">Shopee</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">TikTok</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((r) => (
-                      <tr key={r.id} className="border-b border-gray-100">
-                        <td className="px-3 py-2 font-medium text-gray-800">{r.label}</td>
-                        <td className="px-3 py-2 text-right text-gray-600">{r.berat} gr</td>
-                        <td className="px-3 py-2 text-right text-gray-700">{formatRupiah(r.hargaNota)}</td>
-                        <td className="px-3 py-2 text-left text-xs text-purple-600">
-                          {r.addonHarga > 0 ? `${r.addonNama}` : "-"}
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold text-teal-700">{formatRupiah(r.shopee.hargaJualFinal)}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatRupiah(r.tiktok.hargaJualFinal)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-gray-200 bg-gray-50">
-                      <td className="px-3 py-2 font-semibold text-gray-800">TOTAL</td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-600">
-                        {results.reduce((s, r) => s + r.berat, 0).toFixed(2)} gr
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-gray-800">
-                        {formatRupiah(results.reduce((s, r) => s + r.hargaNota, 0))}
-                      </td>
-                      <td className="px-3 py-2"></td>
-                      <td className="px-3 py-2 text-right font-bold text-teal-700">
-                        {formatRupiah(results.reduce((s, r) => s + r.shopee.hargaJualFinal, 0))}
-                      </td>
-                      <td className="px-3 py-2 text-right font-bold text-gray-800">
-                        {formatRupiah(results.reduce((s, r) => s + r.tiktok.hargaJualFinal, 0))}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
+
         </div>
       )}
 
@@ -1246,8 +1215,8 @@ export default function KalkulatorEmasPage() {
 
       {/* Info Section */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-gray-800">Rincian Biaya per Platform</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <h3 className="mb-3 text-sm font-semibold text-gray-800">Rincian Biaya {activePlatform === "shopee" ? "Shopee" : "TikTok Shop"}</h3>
+        {activePlatform === "shopee" ? (
           <div className="rounded-lg bg-teal-50 p-3 space-y-1.5">
             <p className="font-medium text-xs text-teal-800">Shopee - Perhiasan Berharga / Logam Mulia</p>
             <ul className="text-[11px] text-teal-700/80 space-y-0.5">
@@ -1260,6 +1229,7 @@ export default function KalkulatorEmasPage() {
               <li>Biaya Proses Pesanan: <strong>Rp 1.250</strong> (flat)</li>
             </ul>
           </div>
+        ) : (
           <div className="rounded-lg bg-gray-100 p-3 space-y-1.5">
             <p className="font-medium text-xs text-gray-700">TikTok Shop - Perhiasan & Aksesoris</p>
             <ul className="text-[11px] text-gray-500 space-y-0.5">
@@ -1272,7 +1242,7 @@ export default function KalkulatorEmasPage() {
               * Rate bisa berbeda per seller tier & kategori. Selalu cek TikTok Seller Center.
             </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
