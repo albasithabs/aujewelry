@@ -965,13 +965,21 @@ export default function KalkulatorEmasPage() {
             >
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Kategori / Label</label>
-                <input
-                  type="text"
-                  value={row.label}
-                  onChange={(e) => updateRow(row.id, "label", e.target.value)}
-                  placeholder={`Baris ${idx + 1} (misal: 17K)`}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    list={`karat-list-${row.id}`}
+                    value={row.label}
+                    onChange={(e) => updateRow(row.id, "label", e.target.value)}
+                    placeholder={`Pilih / ketik (misal: 17K)`}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  />
+                  <datalist id={`karat-list-${row.id}`}>
+                    {["6K", "8K", "9K", "16K", "17K", "18K", "22K", "24K"].map((k) => (
+                      <option key={k} value={k} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga per Gram (Rp)</label>
