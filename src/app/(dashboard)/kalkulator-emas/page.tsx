@@ -13,12 +13,22 @@ interface AddonItem {
   harga: number;
 }
 
+interface AcrylicItem {
+  id: string;
+  nama: string;
+  harga: number;
+  includeBox: boolean; // true = sudah termasuk box
+}
+
 interface BarisItem {
   id: string;
   label: string;
   hargaPerGram: number | "";
   berat: number | "";
   addonId: string; // "" = tanpa addon
+  // Akrilik PO fields
+  acrylicId: string; // "" = tanpa akrilik
+  designFee: number | "";
 }
 
 interface BiayaPlatform {
@@ -51,6 +61,9 @@ interface HasilBaris {
   hargaNota: number;
   addonNama: string;
   addonHarga: number;
+  acrylicNama: string;
+  acrylicHarga: number;
+  designFee: number;
   shopee: BiayaPlatform;
   tiktok: BiayaPlatform;
 }
@@ -321,6 +334,9 @@ export default function KalkulatorEmasPage() {
   // Buffer markup untuk fluktuasi harga emas
   const [bufferPersen, setBufferPersen] = useState(0);
 
+  // Mode: normal vs akrilik PO
+  const [mode, setMode] = useState<"normal" | "akrilik">("normal");
+
   // Addon box/packaging
   const [addonList, setAddonList] = useState<AddonItem[]>([
     { id: "box-au", nama: "BOX AU", harga: 26000 },
@@ -330,12 +346,25 @@ export default function KalkulatorEmasPage() {
   ]);
   const [showAddonSettings, setShowAddonSettings] = useState(false);
 
+  // Akrilik data
+  const [acrylicList, setAcrylicList] = useState<AcrylicItem[]>([
+    { id: "grafit", nama: "Acrylic Grafit", harga: 150000, includeBox: false },
+    { id: "uv", nama: "Acrylic + UV", harga: 175000, includeBox: false },
+    { id: "cutting", nama: "Acrylic Cutting", harga: 200000, includeBox: false },
+    { id: "case-box", nama: "Acrylic Case Box", harga: 140000, includeBox: true },
+    { id: "uv-photo", nama: "Acrylic UV + Photo", harga: 275000, includeBox: false },
+    { id: "standing", nama: "Standing Acrylic", harga: 250000, includeBox: false },
+    { id: "custom", nama: "Custom Acrylic", harga: 285000, includeBox: false },
+  ]);
+  const [showAcrylicSettings, setShowAcrylicSettings] = useState(false);
+  const [defaultDesignFee, setDefaultDesignFee] = useState(75000);
+
   // Collapsible settings
   const [showSettings, setShowSettings] = useState(true);
 
   // Rows
   const [rows, setRows] = useState<BarisItem[]>([
-    { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "" },
+    { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" },
   ]);
 
   // ---------------------------------------------------------------------------
@@ -345,7 +374,7 @@ export default function KalkulatorEmasPage() {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "" },
+      { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" },
     ]);
   };
 
@@ -360,6 +389,7 @@ export default function KalkulatorEmasPage() {
         if (r.id !== id) return r;
         if (field === "label") return { ...r, label: value as string };
         if (field === "addonId") return { ...r, addonId: value as string };
+        if (field === "acrylicId") return { ...r, acrylicId: value as string };
         if (field === "hargaPerGram") {
           const num = value === "" ? "" : Number(value);
           return { ...r, hargaPerGram: num === 0 ? "" : num };
@@ -368,13 +398,17 @@ export default function KalkulatorEmasPage() {
           const num = value === "" ? "" : Number(value);
           return { ...r, berat: num === 0 ? "" : num };
         }
+        if (field === "designFee") {
+          const num = value === "" ? "" : Number(value);
+          return { ...r, designFee: num };
+        }
         return r;
       })
     );
   };
 
   const resetAll = () => {
-    setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "" }]);
+    setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" }]);
     setShopeeConfig({
       statusPenjual: "star",
       jumlahPesanan: "lte50",
@@ -556,10 +590,26 @@ export default function KalkulatorEmasPage() {
     const totalSebelum = harga * berat;
     const hargaNota = Math.round(totalSebelum);
 
-    // Find addon
+    // Find addon (box)
     const addon = row.addonId ? addonList.find((a) => a.id === row.addonId) : null;
-    const addonHarga = addon ? addon.harga : 0;
+    let addonHarga = addon ? addon.harga : 0;
     const addonNama = addon ? addon.nama : "";
+
+    // Find acrylic (mode akrilik)
+    const acrylic = mode === "akrilik" && row.acrylicId ? acrylicList.find((a) => a.id === row.acrylicId) : null;
+    const acrylicHarga = acrylic ? acrylic.harga : 0;
+    const acrylicNama = acrylic ? acrylic.nama : "";
+
+    // Design fee (mode akrilik)
+    const designFee = mode === "akrilik" ? (typeof row.designFee === "number" ? row.designFee : defaultDesignFee) : 0;
+
+    // Jika akrilik sudah include box, addon box = 0
+    if (acrylic?.includeBox) {
+      addonHarga = 0;
+    }
+
+    // Total tambahan di atas harga nota
+    const totalAddon = addonHarga + acrylicHarga + designFee;
 
     return {
       id: row.id,
@@ -570,8 +620,11 @@ export default function KalkulatorEmasPage() {
       hargaNota,
       addonNama,
       addonHarga,
-      shopee: calcShopee(hargaNota, addonHarga),
-      tiktok: calcTiktok(hargaNota, addonHarga),
+      acrylicNama,
+      acrylicHarga,
+      designFee,
+      shopee: calcShopee(hargaNota, totalAddon),
+      tiktok: calcTiktok(hargaNota, totalAddon),
     };
   }
 
@@ -591,6 +644,30 @@ export default function KalkulatorEmasPage() {
         <p className="mt-1 text-sm text-gray-500">
           Hitung harga jual emas di Shopee & TikTok Shop agar dana yang diterima tetap sesuai Harga Nota setelah semua potongan
         </p>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm">
+        <button
+          onClick={() => setMode("normal")}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+            mode === "normal"
+              ? "bg-amber-500 text-white shadow-sm"
+              : "text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          Normal
+        </button>
+        <button
+          onClick={() => setMode("akrilik")}
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+            mode === "akrilik"
+              ? "bg-violet-600 text-white shadow-sm"
+              : "text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          Akrilik PO
+        </button>
       </div>
 
       {/* Platform Toggle */}
@@ -886,6 +963,101 @@ export default function KalkulatorEmasPage() {
               )}
             </div>
 
+            {/* Akrilik Settings */}
+            {mode === "akrilik" && (
+              <div className="mt-5 rounded-lg border border-violet-200 bg-violet-50/50 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500 text-xs font-bold text-white">A</div>
+                    <span className="text-sm font-bold text-gray-800">Pengaturan Akrilik</span>
+                  </div>
+                  <button
+                    onClick={() => setShowAcrylicSettings(!showAcrylicSettings)}
+                    className="text-xs text-violet-600 hover:text-violet-800 font-medium"
+                  >
+                    {showAcrylicSettings ? "Tutup" : "Edit Akrilik"}
+                  </button>
+                </div>
+
+                {/* Default design fee */}
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="text-xs text-gray-600">Default Design Fee:</span>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={defaultDesignFee}
+                      onChange={(e) => setDefaultDesignFee(Number(e.target.value) || 0)}
+                      className="w-32 rounded-lg border border-violet-200 bg-white py-1.5 pl-8 pr-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Acrylic list preview */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {acrylicList.map((ac) => (
+                    <span
+                      key={ac.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700"
+                    >
+                      {ac.nama}: {formatRupiah(ac.harga)}{ac.includeBox ? " (incl. box)" : ""}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Editable acrylic list */}
+                {showAcrylicSettings && (
+                  <div className="space-y-2 border-t border-violet-200 pt-3">
+                    {acrylicList.map((ac) => (
+                      <div key={ac.id} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={ac.nama}
+                          onChange={(e) => setAcrylicList((prev) => prev.map((a) => a.id === ac.id ? { ...a, nama: e.target.value } : a))}
+                          placeholder="Nama akrilik"
+                          className="flex-1 rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={ac.harga}
+                            onChange={(e) => setAcrylicList((prev) => prev.map((a) => a.id === ac.id ? { ...a, harga: Number(e.target.value) || 0 } : a))}
+                            className="w-32 rounded-lg border border-violet-200 bg-white py-2 pl-8 pr-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                          />
+                        </div>
+                        <label className="flex items-center gap-1 text-[10px] text-violet-600 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={ac.includeBox}
+                            onChange={(e) => setAcrylicList((prev) => prev.map((a) => a.id === ac.id ? { ...a, includeBox: e.target.checked } : a))}
+                            className="h-3.5 w-3.5 accent-violet-600"
+                          />
+                          Incl. Box
+                        </label>
+                        <button
+                          onClick={() => setAcrylicList((prev) => prev.filter((a) => a.id !== ac.id))}
+                          className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                          title="Hapus"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setAcrylicList((prev) => [...prev, { id: generateId(), nama: "", harga: 0, includeBox: false }])}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-violet-300 px-3 py-2 text-xs font-medium text-violet-600 transition hover:bg-violet-100"
+                    >
+                      <Plus size={14} />
+                      Tambah Tipe Akrilik
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Explanation */}
             <div className="mt-4 rounded-lg bg-blue-50 px-4 py-3">
               <p className="text-xs text-blue-700">
@@ -931,7 +1103,7 @@ export default function KalkulatorEmasPage() {
                   onClick={() => {
                     setRows((prev) => [
                       ...prev,
-                      { id: generateId(), label: k, hargaPerGram: "", berat: "", addonId: "" },
+                      { id: generateId(), label: k, hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" },
                     ]);
                   }}
                   className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
@@ -1010,6 +1182,7 @@ export default function KalkulatorEmasPage() {
                   value={row.addonId}
                   onChange={(e) => updateRow(row.id, "addonId" as keyof BarisItem, e.target.value)}
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  disabled={mode === "akrilik" && !!row.acrylicId && acrylicList.find((a) => a.id === row.acrylicId)?.includeBox}
                 >
                   <option value="">Tanpa Box</option>
                   {addonList.map((addon) => (
@@ -1018,6 +1191,9 @@ export default function KalkulatorEmasPage() {
                     </option>
                   ))}
                 </select>
+                {mode === "akrilik" && row.acrylicId && acrylicList.find((a) => a.id === row.acrylicId)?.includeBox && (
+                  <p className="mt-1 text-[10px] text-violet-500">Box sudah termasuk akrilik</p>
+                )}
               </div>
               <div className="flex items-center justify-end sm:justify-center">
                 <button
@@ -1029,6 +1205,35 @@ export default function KalkulatorEmasPage() {
                   <Trash2 size={16} />
                 </button>
               </div>
+
+              {/* Akrilik PO fields */}
+              {mode === "akrilik" && (
+                <div className="col-span-full grid grid-cols-1 gap-2 rounded-lg border border-violet-100 bg-violet-50/50 p-3 sm:grid-cols-2 sm:gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-violet-600">Tipe Akrilik</label>
+                    <select
+                      value={row.acrylicId}
+                      onChange={(e) => updateRow(row.id, "acrylicId" as keyof BarisItem, e.target.value)}
+                      className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    >
+                      <option value="">Tanpa Akrilik</option>
+                      {acrylicList.map((ac) => (
+                        <option key={ac.id} value={ac.id}>
+                          {ac.nama} ({formatRupiah(ac.harga)}){ac.includeBox ? " - incl. box" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-violet-600">Design / Custom Fee</label>
+                    <RupiahInput
+                      value={typeof row.designFee === "number" ? row.designFee : defaultDesignFee}
+                      onChange={(val) => updateRow(row.id, "designFee" as keyof BarisItem, val === "" ? "" : val)}
+                      placeholder="75.000"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1064,9 +1269,21 @@ export default function KalkulatorEmasPage() {
                     <span className="text-sm text-gray-500">Harga Nota (dibulatkan)</span>
                     <span className="text-sm font-semibold text-gray-800">{formatRupiah(r.hargaNota)}</span>
                   </div>
+                  {r.acrylicHarga > 0 && (
+                    <div className="flex items-center justify-between rounded bg-violet-50 px-2 py-1">
+                      <span className="text-sm text-violet-600">Akrilik: {r.acrylicNama}</span>
+                      <span className="text-sm font-semibold text-violet-700">+ {formatRupiah(r.acrylicHarga)}</span>
+                    </div>
+                  )}
+                  {r.designFee > 0 && (
+                    <div className="flex items-center justify-between rounded bg-violet-50 px-2 py-1">
+                      <span className="text-sm text-violet-600">Design / Custom</span>
+                      <span className="text-sm font-semibold text-violet-700">+ {formatRupiah(r.designFee)}</span>
+                    </div>
+                  )}
                   {r.addonHarga > 0 && (
                     <div className="flex items-center justify-between rounded bg-purple-50 px-2 py-1">
-                      <span className="text-sm text-purple-600">Addon: {r.addonNama}</span>
+                      <span className="text-sm text-purple-600">Box: {r.addonNama}</span>
                       <span className="text-sm font-semibold text-purple-700">+ {formatRupiah(r.addonHarga)}</span>
                     </div>
                   )}
