@@ -34,9 +34,12 @@ interface AcrylicItem {
 interface BarisItem {
   id: string;
   label: string;
+  // Mode Normal
+  hargaPerGram: number | "";
+  berat: number | "";
+  // Mode Akrilik PO
   hargaEmas: number | "";
   addonId: string; // "" = tanpa addon
-  // Akrilik PO fields
   acrylicId: string; // "" = tanpa akrilik
   designFee: number | "";
 }
@@ -71,6 +74,8 @@ interface HasilBaris {
   acrylicNama: string;
   acrylicHarga: number;
   designFee: number;
+  hargaPerGram?: number;
+  berat?: number;
   shopee: BiayaPlatform;
 }
 
@@ -398,7 +403,7 @@ export default function KalkulatorEmasPage() {
 
   // Rows
   const [rows, setRows] = useState<BarisItem[]>([
-    { id: generateId(), label: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
+    { id: generateId(), label: "", hargaPerGram: "", berat: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
   ]);
 
   // ---------------------------------------------------------------------------
@@ -408,7 +413,7 @@ export default function KalkulatorEmasPage() {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: generateId(), label: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
+      { id: generateId(), label: "", hargaPerGram: "", berat: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
     ]);
   };
 
@@ -424,9 +429,17 @@ export default function KalkulatorEmasPage() {
         if (field === "label") return { ...r, label: value as string };
         if (field === "addonId") return { ...r, addonId: value as string };
         if (field === "acrylicId") return { ...r, acrylicId: value as string };
+        if (field === "hargaPerGram") {
+          const num = value === "" ? "" : Number(value);
+          return { ...r, hargaPerGram: num === 0 ? "" : num };
+        }
+        if (field === "berat") {
+          const num = value === "" ? "" : Number(value);
+          return { ...r, berat: num === 0 ? "" : num };
+        }
         if (field === "hargaEmas") {
           const num = value === "" ? "" : Number(value);
-          return { ...r, hargaEmas: num === 0 ? "" : num };
+          return { ...r, hargaEmas: num };
         }
         if (field === "designFee") {
           const num = value === "" ? "" : Number(value);
@@ -438,7 +451,7 @@ export default function KalkulatorEmasPage() {
   };
 
   const resetAll = () => {
-    setRows([{ id: generateId(), label: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" }]);
+    setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" }]);
     setShopeeConfig({
       statusPenjual: "star",
       jumlahPesanan: "lte50",
@@ -564,10 +577,22 @@ export default function KalkulatorEmasPage() {
 
 
   function calculateRow(row: BarisItem, idx: number): HasilBaris | null {
-    const hargaEmas = typeof row.hargaEmas === "number" ? row.hargaEmas : 0;
-    if (hargaEmas <= 0) return null;
+    let hargaNota = 0;
+    let hargaPerGramVal: number | undefined;
+    let beratVal: number | undefined;
 
-    const hargaNota = hargaEmas;
+    if (mode === "normal") {
+      const harga = typeof row.hargaPerGram === "number" ? row.hargaPerGram : 0;
+      const berat = typeof row.berat === "number" ? row.berat : 0;
+      if (harga <= 0 || berat <= 0) return null;
+      hargaNota = Math.round(harga * berat);
+      hargaPerGramVal = harga;
+      beratVal = berat;
+    } else {
+      const hargaEmas = typeof row.hargaEmas === "number" ? row.hargaEmas : 0;
+      if (hargaEmas <= 0) return null;
+      hargaNota = hargaEmas;
+    }
 
     // Find addon (box)
     const addon = row.addonId ? addonList.find((a) => a.id === row.addonId) : null;
@@ -599,6 +624,8 @@ export default function KalkulatorEmasPage() {
       acrylicNama,
       acrylicHarga,
       designFee,
+      hargaPerGram: hargaPerGramVal,
+      berat: beratVal,
       shopee: calcShopee(hargaNota, totalAddon),
     };
   }
@@ -745,7 +772,8 @@ export default function KalkulatorEmasPage() {
               </div>
             </div>
 
-            {/* Harga Emas Hari Ini */}
+            {/* Harga Emas Hari Ini - hanya mode Akrilik */}
+            {mode === "akrilik" && (
             <div className="mt-5 rounded-lg border border-yellow-200 bg-yellow-50/50 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -859,6 +887,7 @@ export default function KalkulatorEmasPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Buffer Markup */}
             <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
@@ -1104,7 +1133,8 @@ export default function KalkulatorEmasPage() {
           </div>
         </div>
 
-        {/* Quick Karat Presets */}
+        {/* Quick Karat Presets - hanya mode normal */}
+        {mode === "normal" && (
         <div className="mb-4">
           <p className="mb-2 text-xs font-medium text-gray-500">Karat Preset (klik untuk tambah baris):</p>
           <div className="flex flex-wrap gap-1.5">
@@ -1116,7 +1146,7 @@ export default function KalkulatorEmasPage() {
                   onClick={() => {
                     setRows((prev) => [
                       ...prev,
-                      { id: generateId(), label: k, hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
+                      { id: generateId(), label: k, hargaPerGram: "", berat: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
                     ]);
                   }}
                   className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
@@ -1131,21 +1161,36 @@ export default function KalkulatorEmasPage() {
             })}
           </div>
         </div>
+        )}
 
         {/* Table Header */}
-        <div className="hidden sm:grid sm:grid-cols-[1fr_1.2fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
-          <span className="text-xs font-medium text-gray-400">Kategori / Label</span>
-          <span className="text-xs font-medium text-gray-400">Harga Emas (Rp)</span>
-          <span className="text-xs font-medium text-gray-400">Addon / Box</span>
-          <span></span>
-        </div>
+        {mode === "normal" ? (
+          <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_0.8fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
+            <span className="text-xs font-medium text-gray-400">Kategori / Label</span>
+            <span className="text-xs font-medium text-gray-400">Harga per Gram (Rp)</span>
+            <span className="text-xs font-medium text-gray-400">Berat (gram)</span>
+            <span className="text-xs font-medium text-gray-400">Addon / Box</span>
+            <span></span>
+          </div>
+        ) : (
+          <div className="hidden sm:grid sm:grid-cols-[1fr_1.2fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
+            <span className="text-xs font-medium text-gray-400">Kategori / Label</span>
+            <span className="text-xs font-medium text-gray-400">Harga Emas</span>
+            <span className="text-xs font-medium text-gray-400">Addon / Box</span>
+            <span></span>
+          </div>
+        )}
 
         {/* Rows */}
         <div className="space-y-3">
           {rows.map((row, idx) => (
             <div
               key={row.id}
-              className="grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:grid-cols-[1fr_1.2fr_1fr_40px] sm:items-center sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0"
+              className={`grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:items-center sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 ${
+                mode === "normal"
+                  ? "sm:grid-cols-[1fr_1fr_0.8fr_1fr_40px]"
+                  : "sm:grid-cols-[1fr_1.2fr_1fr_40px]"
+              }`}
             >
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Kategori / Label</label>
@@ -1165,32 +1210,58 @@ export default function KalkulatorEmasPage() {
                   </datalist>
                 </div>
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga Emas (Rp)</label>
-                <RupiahInput
-                  value={row.hargaEmas}
-                  onChange={(val) => updateRow(row.id, "hargaEmas", val === "" ? "" : val)}
-                  placeholder="2.033.000"
-                />
-                {/* Quick-fill preset buttons */}
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {hargaPresets.map((group) =>
-                    group.items.map((item, i) => (
-                      <button
-                        key={`${group.id}-${i}`}
-                        onClick={() => updateRow(row.id, "hargaEmas", item.harga)}
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${
-                          row.hargaEmas === item.harga
-                            ? "bg-yellow-500 text-white"
-                            : "border border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
-                        }`}
-                      >
-                        {group.nama} {item.berat}
-                      </button>
-                    ))
-                  )}
+
+              {/* Mode Normal: Harga per Gram + Berat */}
+              {mode === "normal" && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga per Gram (Rp)</label>
+                    <RupiahInput
+                      value={row.hargaPerGram}
+                      onChange={(val) => updateRow(row.id, "hargaPerGram", val === "" ? "" : val)}
+                      placeholder="1.640.000"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-gray-400 sm:hidden">Berat (gram)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={row.berat}
+                        onChange={(e) => updateRow(row.id, "berat", e.target.value)}
+                        placeholder="0.00"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-8 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">gr</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Mode Akrilik: Dropdown Harga Emas */}
+              {mode === "akrilik" && (
+                <div>
+                  <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga Emas</label>
+                  <select
+                    value={row.hargaEmas === "" ? "" : row.hargaEmas.toString()}
+                    onChange={(e) => updateRow(row.id, "hargaEmas", e.target.value === "" ? "" : Number(e.target.value))}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                  >
+                    <option value="">Pilih Harga Emas</option>
+                    {hargaPresets.map((group) => (
+                      <optgroup key={group.id} label={group.nama}>
+                        {group.items.map((item, i) => (
+                          <option key={`${group.id}-${i}`} value={item.harga}>
+                            {group.nama} {item.berat} - {formatRupiah(item.harga)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
-              </div>
+              )}
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Addon / Box</label>
                 <select
@@ -1267,6 +1338,11 @@ export default function KalkulatorEmasPage() {
               <div className="border-b border-gray-100 bg-gray-50 px-5 py-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-800">{r.label}</h3>
+                  {r.hargaPerGram && r.berat && (
+                    <span className="text-xs text-gray-400">
+                      {formatRupiah(r.hargaPerGram)}/gr x {r.berat} gr
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1274,7 +1350,7 @@ export default function KalkulatorEmasPage() {
                 {/* Common */}
                 <div className="mb-4 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Harga Emas</span>
+                    <span className="text-sm text-gray-500">Harga Nota</span>
                     <span className="text-sm font-semibold text-gray-800">{formatRupiah(r.hargaNota)}</span>
                   </div>
                   {r.acrylicHarga > 0 && (
