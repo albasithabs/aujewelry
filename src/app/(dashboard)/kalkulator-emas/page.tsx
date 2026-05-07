@@ -59,6 +59,7 @@ interface HasilBaris {
   berat?: number;
   totalModal: number;
   feeAmount: number;
+  biayaProses: number;
   hargaJualFinal: number;
 }
 
@@ -437,13 +438,14 @@ export default function KalkulatorEmasPage() {
   // Calculation
   // ---------------------------------------------------------------------------
 
-  function calcHargaJual(totalModal: number): { totalModal: number; feeAmount: number; hargaJualFinal: number } {
-    // Simpel: harga jual = total modal x (1 + fee%)
+  function calcHargaJual(totalModal: number): { totalModal: number; feeAmount: number; biayaProses: number; hargaJualFinal: number } {
+    // Harga jual = (total modal x (1 + fee%)) + biaya proses per order
     const feeAmount = totalModal * (feePersen / 100);
-    const hargaJualRaw = totalModal + feeAmount;
+    const biayaProses = 1250;
+    const hargaJualRaw = totalModal + feeAmount + biayaProses;
     // Bulatkan ke ribuan ke atas
     const hargaJualFinal = Math.ceil(hargaJualRaw / 1000) * 1000;
-    return { totalModal, feeAmount, hargaJualFinal };
+    return { totalModal, feeAmount, biayaProses, hargaJualFinal };
   }
 
 
