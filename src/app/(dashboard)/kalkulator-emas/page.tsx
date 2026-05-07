@@ -23,8 +23,7 @@ interface AcrylicItem {
 interface BarisItem {
   id: string;
   label: string;
-  hargaPerGram: number | "";
-  berat: number | "";
+  hargaEmas: number | "";
   addonId: string; // "" = tanpa addon
   // Akrilik PO fields
   acrylicId: string; // "" = tanpa akrilik
@@ -55,9 +54,6 @@ interface BiayaPlatform {
 interface HasilBaris {
   id: string;
   label: string;
-  hargaPerGram: number;
-  berat: number;
-  totalSebelum: number;
   hargaNota: number;
   addonNama: string;
   addonHarga: number;
@@ -65,7 +61,6 @@ interface HasilBaris {
   acrylicHarga: number;
   designFee: number;
   shopee: BiayaPlatform;
-  tiktok: BiayaPlatform;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,19 +88,7 @@ const SHOPEE_LIVE_XTRA_MAX = 20000;
 const SHOPEE_PRE_ORDER_RATE = 0.03; // 3%
 const SHOPEE_BIAYA_PROSES = 1250;
 
-// ---------------------------------------------------------------------------
-// TikTok Shop config
-// ---------------------------------------------------------------------------
 
-interface TiktokConfig {
-  ikutFreeOngkir: boolean;
-  ikutFlashSale: boolean;
-}
-
-const TIKTOK_KOMISI_RATE = 0.05; // 5% komisi
-const TIKTOK_PAYMENT_RATE = 0.01; // 1% biaya payment
-const TIKTOK_FREE_ONGKIR_RATE = 0.015; // 1.5% subsidi ongkir
-const TIKTOK_FLASH_SALE_RATE = 0.01; // 1% flash sale fee
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -322,14 +305,7 @@ export default function KalkulatorEmasPage() {
     isPreOrder: false,
   });
 
-  // TikTok settings
-  const [tiktokConfig, setTiktokConfig] = useState<TiktokConfig>({
-    ikutFreeOngkir: false,
-    ikutFlashSale: false,
-  });
 
-  // Platform toggle
-  const [activePlatform, setActivePlatform] = useState<"shopee" | "tiktok">("shopee");
 
   // Buffer markup untuk fluktuasi harga emas
   const [bufferPersen, setBufferPersen] = useState(0);
@@ -364,7 +340,7 @@ export default function KalkulatorEmasPage() {
 
   // Rows
   const [rows, setRows] = useState<BarisItem[]>([
-    { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" },
+    { id: generateId(), label: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
   ]);
 
   // ---------------------------------------------------------------------------
@@ -374,7 +350,7 @@ export default function KalkulatorEmasPage() {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" },
+      { id: generateId(), label: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
     ]);
   };
 
@@ -390,13 +366,9 @@ export default function KalkulatorEmasPage() {
         if (field === "label") return { ...r, label: value as string };
         if (field === "addonId") return { ...r, addonId: value as string };
         if (field === "acrylicId") return { ...r, acrylicId: value as string };
-        if (field === "hargaPerGram") {
+        if (field === "hargaEmas") {
           const num = value === "" ? "" : Number(value);
-          return { ...r, hargaPerGram: num === 0 ? "" : num };
-        }
-        if (field === "berat") {
-          const num = value === "" ? "" : Number(value);
-          return { ...r, berat: num === 0 ? "" : num };
+          return { ...r, hargaEmas: num === 0 ? "" : num };
         }
         if (field === "designFee") {
           const num = value === "" ? "" : Number(value);
@@ -408,7 +380,7 @@ export default function KalkulatorEmasPage() {
   };
 
   const resetAll = () => {
-    setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" }]);
+    setRows([{ id: generateId(), label: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" }]);
     setShopeeConfig({
       statusPenjual: "star",
       jumlahPesanan: "lte50",
@@ -416,10 +388,6 @@ export default function KalkulatorEmasPage() {
       ikutPromoXtra: false,
       ikutLiveXtra: false,
       isPreOrder: false,
-    });
-    setTiktokConfig({
-      ikutFreeOngkir: false,
-      ikutFlashSale: false,
     });
     setBufferPersen(0);
   };
@@ -535,60 +503,13 @@ export default function KalkulatorEmasPage() {
     };
   }
 
-  function calcTiktok(hargaNota: number, addonHarga: number = 0): BiayaPlatform {
-    // Buffer: target dana diterima = harga nota + addon + buffer
-    const bufferAmount = hargaNota * (bufferPersen / 100);
-    const targetDanaDiterima = hargaNota + addonHarga + bufferAmount;
 
-    const komisiRate = TIKTOK_KOMISI_RATE;
-    const paymentRate = TIKTOK_PAYMENT_RATE;
-    const freeOngkirRate = tiktokConfig.ikutFreeOngkir ? TIKTOK_FREE_ONGKIR_RATE : 0;
-    const flashSaleRate = tiktokConfig.ikutFlashSale ? TIKTOK_FLASH_SALE_RATE : 0;
-
-    const totalRate = komisiRate + paymentRate + freeOngkirRate + flashSaleRate;
-
-    // Reverse calc with buffer included
-    const hargaJualSebelumCeil = targetDanaDiterima / (1 - totalRate);
-    const hargaJualFinal = Math.ceil(hargaJualSebelumCeil);
-
-    // Recalculate at final price
-    const biayaKomisi = hargaJualFinal * komisiRate;
-    const biayaPayment = hargaJualFinal * paymentRate;
-    const biayaFreeOngkir = hargaJualFinal * freeOngkirRate;
-    const biayaFlashSale = hargaJualFinal * flashSaleRate;
-    const totalBiaya = biayaKomisi + biayaPayment + biayaFreeOngkir + biayaFlashSale;
-    const danaDiterima = hargaJualFinal - totalBiaya;
-    const totalBiayaPersen = hargaJualFinal > 0 ? (totalBiaya / hargaJualFinal) * 100 : 0;
-
-    return {
-      adminRate: komisiRate,
-      biayaAdmin: biayaKomisi,
-      goXtraRate: freeOngkirRate,
-      biayaGoXtra: biayaFreeOngkir,
-      promoXtraRate: flashSaleRate,
-      biayaPromoXtra: biayaFlashSale,
-      liveXtraRate: paymentRate,
-      biayaLiveXtra: biayaPayment,
-      preOrderRate: 0,
-      biayaPreOrder: 0,
-      biayaProses: 0,
-      totalBiaya,
-      totalBiayaPersen,
-      hargaJualSebelumCeil,
-      hargaJualFinal,
-      danaDiterima,
-      bufferAmount,
-      targetDanaDiterima,
-    };
-  }
 
   function calculateRow(row: BarisItem, idx: number): HasilBaris | null {
-    const harga = typeof row.hargaPerGram === "number" ? row.hargaPerGram : 0;
-    const berat = typeof row.berat === "number" ? row.berat : 0;
-    if (harga <= 0 || berat <= 0) return null;
+    const hargaEmas = typeof row.hargaEmas === "number" ? row.hargaEmas : 0;
+    if (hargaEmas <= 0) return null;
 
-    const totalSebelum = harga * berat;
-    const hargaNota = Math.round(totalSebelum);
+    const hargaNota = hargaEmas;
 
     // Find addon (box)
     const addon = row.addonId ? addonList.find((a) => a.id === row.addonId) : null;
@@ -614,9 +535,6 @@ export default function KalkulatorEmasPage() {
     return {
       id: row.id,
       label: row.label || `Baris ${idx + 1}`,
-      hargaPerGram: harga,
-      berat,
-      totalSebelum,
       hargaNota,
       addonNama,
       addonHarga,
@@ -624,7 +542,6 @@ export default function KalkulatorEmasPage() {
       acrylicHarga,
       designFee,
       shopee: calcShopee(hargaNota, totalAddon),
-      tiktok: calcTiktok(hargaNota, totalAddon),
     };
   }
 
@@ -670,29 +587,7 @@ export default function KalkulatorEmasPage() {
         </button>
       </div>
 
-      {/* Platform Toggle */}
-      <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm">
-        <button
-          onClick={() => setActivePlatform("shopee")}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-            activePlatform === "shopee"
-              ? "bg-teal-600 text-white shadow-sm"
-              : "text-gray-500 hover:bg-gray-50"
-          }`}
-        >
-          Shopee
-        </button>
-        <button
-          onClick={() => setActivePlatform("tiktok")}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-            activePlatform === "tiktok"
-              ? "bg-gray-900 text-white shadow-sm"
-              : "text-gray-500 hover:bg-gray-50"
-          }`}
-        >
-          TikTok Shop
-        </button>
-      </div>
+
 
       {/* Platform Settings */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -714,7 +609,6 @@ export default function KalkulatorEmasPage() {
           <div className="border-t border-gray-100 px-5 pb-5">
             <div className="grid gap-5 pt-4">
               {/* ---- SHOPEE ---- */}
-              {activePlatform === "shopee" && (
               <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-xs font-bold text-white">S</div>
@@ -791,60 +685,6 @@ export default function KalkulatorEmasPage() {
                   </div>
                 </div>
               </div>
-              )}
-
-              {/* ---- TIKTOK SHOP ---- */}
-              {activePlatform === "tiktok" && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-900 text-xs font-bold text-white">T</div>
-                  <span className="text-sm font-bold text-gray-800">TikTok Shop</span>
-                  <span className="ml-auto rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                    Perhiasan & Aksesoris
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-gray-600">Biaya Tetap</p>
-                    <div className="rounded-md bg-gray-100 px-3 py-2 space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">Komisi Platform</span>
-                        <span className="font-medium text-gray-700">{pct(TIKTOK_KOMISI_RATE)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">Biaya Payment</span>
-                        <span className="font-medium text-gray-700">{pct(TIKTOK_PAYMENT_RATE)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200/50 pt-3 space-y-2.5">
-                    <p className="text-xs font-medium text-gray-600">Program & Layanan</p>
-                    <ToggleOption
-                      label="Free Ongkir"
-                      detail={pct(TIKTOK_FREE_ONGKIR_RATE)}
-                      checked={tiktokConfig.ikutFreeOngkir}
-                      onChange={(v) => setTiktokConfig((c) => ({ ...c, ikutFreeOngkir: v }))}
-                      accent="bg-gray-800"
-                    />
-                    <ToggleOption
-                      label="Flash Sale"
-                      detail={pct(TIKTOK_FLASH_SALE_RATE)}
-                      checked={tiktokConfig.ikutFlashSale}
-                      onChange={(v) => setTiktokConfig((c) => ({ ...c, ikutFlashSale: v }))}
-                      accent="bg-gray-800"
-                    />
-                  </div>
-
-                  <div className="rounded-md bg-gray-100 px-3 py-2">
-                    <p className="text-[10px] text-gray-500">
-                      * Rate TikTok Shop bisa berbeda per seller tier. Sesuaikan jika perlu.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              )}
             </div>
 
             {/* Buffer Markup */}
@@ -1103,7 +943,7 @@ export default function KalkulatorEmasPage() {
                   onClick={() => {
                     setRows((prev) => [
                       ...prev,
-                      { id: generateId(), label: k, hargaPerGram: "", berat: "", addonId: "", acrylicId: "", designFee: "" },
+                      { id: generateId(), label: k, hargaEmas: "", addonId: "", acrylicId: "", designFee: "" },
                     ]);
                   }}
                   className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
@@ -1120,10 +960,9 @@ export default function KalkulatorEmasPage() {
         </div>
 
         {/* Table Header */}
-        <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_0.8fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
+        <div className="hidden sm:grid sm:grid-cols-[1fr_1.2fr_1fr_40px] sm:gap-3 sm:px-1 sm:pb-2">
           <span className="text-xs font-medium text-gray-400">Kategori / Label</span>
-          <span className="text-xs font-medium text-gray-400">Harga per Gram (Rp)</span>
-          <span className="text-xs font-medium text-gray-400">Berat (gram)</span>
+          <span className="text-xs font-medium text-gray-400">Harga Emas (Rp)</span>
           <span className="text-xs font-medium text-gray-400">Addon / Box</span>
           <span></span>
         </div>
@@ -1133,7 +972,7 @@ export default function KalkulatorEmasPage() {
           {rows.map((row, idx) => (
             <div
               key={row.id}
-              className="grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:grid-cols-[1fr_1fr_0.8fr_1fr_40px] sm:items-center sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0"
+              className="grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 sm:grid-cols-[1fr_1.2fr_1fr_40px] sm:items-center sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0"
             >
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Kategori / Label</label>
@@ -1154,27 +993,12 @@ export default function KalkulatorEmasPage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga per Gram (Rp)</label>
+                <label className="mb-1 block text-xs text-gray-400 sm:hidden">Harga Emas (Rp)</label>
                 <RupiahInput
-                  value={row.hargaPerGram}
-                  onChange={(val) => updateRow(row.id, "hargaPerGram", val === "" ? "" : val)}
-                  placeholder="1.640.000"
+                  value={row.hargaEmas}
+                  onChange={(val) => updateRow(row.id, "hargaEmas", val === "" ? "" : val)}
+                  placeholder="2.033.000"
                 />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-gray-400 sm:hidden">Berat (gram)</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={row.berat}
-                    onChange={(e) => updateRow(row.id, "berat", e.target.value)}
-                    placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-8 text-base sm:text-sm text-gray-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">gr</span>
-                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Addon / Box</label>
@@ -1252,9 +1076,6 @@ export default function KalkulatorEmasPage() {
               <div className="border-b border-gray-100 bg-gray-50 px-5 py-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-800">{r.label}</h3>
-                  <span className="text-xs text-gray-400">
-                    {formatRupiah(r.hargaPerGram)}/gr x {r.berat} gr
-                  </span>
                 </div>
               </div>
 
@@ -1262,11 +1083,7 @@ export default function KalkulatorEmasPage() {
                 {/* Common */}
                 <div className="mb-4 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Total Sebelum</span>
-                    <span className="text-sm text-gray-700">{formatRupiah(r.totalSebelum)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Harga Nota (dibulatkan)</span>
+                    <span className="text-sm text-gray-500">Harga Emas</span>
                     <span className="text-sm font-semibold text-gray-800">{formatRupiah(r.hargaNota)}</span>
                   </div>
                   {r.acrylicHarga > 0 && (
@@ -1291,118 +1108,63 @@ export default function KalkulatorEmasPage() {
 
                 <div className="border-t border-dashed border-gray-200 my-3" />
 
-                {/* Platform result */}
-                {activePlatform === "shopee" && (
-                  <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded bg-teal-600 text-xs font-bold text-white">S</div>
-                      <span className="text-sm font-semibold text-teal-800">Shopee</span>
-                    </div>
+                {/* Shopee result */}
+                <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded bg-teal-600 text-xs font-bold text-white">S</div>
+                    <span className="text-sm font-semibold text-teal-800">Shopee</span>
+                  </div>
 
-                    {/* Fee breakdown */}
-                    <div className="space-y-0.5 mb-3">
-                      <FeeRow label="Biaya Admin" amount={r.shopee.biayaAdmin} rate={r.shopee.adminRate} />
-                      {r.shopee.biayaGoXtra > 0 && (
-                        <FeeRow label="GO XTRA" amount={r.shopee.biayaGoXtra} rate={r.shopee.goXtraRate} maxCap={SHOPEE_GO_XTRA_MAX} />
-                      )}
-                      {r.shopee.biayaPromoXtra > 0 && (
-                        <FeeRow label="Promo XTRA" amount={r.shopee.biayaPromoXtra} rate={r.shopee.promoXtraRate} maxCap={SHOPEE_PROMO_XTRA_MAX} />
-                      )}
-                      {r.shopee.biayaLiveXtra > 0 && (
-                        <FeeRow label="Live XTRA" amount={r.shopee.biayaLiveXtra} rate={r.shopee.liveXtraRate} maxCap={SHOPEE_LIVE_XTRA_MAX} />
-                      )}
-                      {r.shopee.biayaPreOrder > 0 && (
-                        <FeeRow label="Pre Order" amount={r.shopee.biayaPreOrder} rate={r.shopee.preOrderRate} />
-                      )}
-                      <FeeRow label="Biaya Proses" amount={r.shopee.biayaProses} />
-                      <div className="border-t border-teal-300/50 mt-1 pt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-teal-700">Total Biaya ({r.shopee.totalBiayaPersen.toFixed(1)}%)</span>
-                          <span className="text-xs font-semibold text-teal-800">{formatRupiah(r.shopee.totalBiaya)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Final price */}
-                    <div className="rounded-md bg-teal-100 px-3 py-2.5">
+                  {/* Fee breakdown */}
+                  <div className="space-y-0.5 mb-3">
+                    <FeeRow label="Biaya Admin" amount={r.shopee.biayaAdmin} rate={r.shopee.adminRate} />
+                    {r.shopee.biayaGoXtra > 0 && (
+                      <FeeRow label="GO XTRA" amount={r.shopee.biayaGoXtra} rate={r.shopee.goXtraRate} maxCap={SHOPEE_GO_XTRA_MAX} />
+                    )}
+                    {r.shopee.biayaPromoXtra > 0 && (
+                      <FeeRow label="Promo XTRA" amount={r.shopee.biayaPromoXtra} rate={r.shopee.promoXtraRate} maxCap={SHOPEE_PROMO_XTRA_MAX} />
+                    )}
+                    {r.shopee.biayaLiveXtra > 0 && (
+                      <FeeRow label="Live XTRA" amount={r.shopee.biayaLiveXtra} rate={r.shopee.liveXtraRate} maxCap={SHOPEE_LIVE_XTRA_MAX} />
+                    )}
+                    {r.shopee.biayaPreOrder > 0 && (
+                      <FeeRow label="Pre Order" amount={r.shopee.biayaPreOrder} rate={r.shopee.preOrderRate} />
+                    )}
+                    <FeeRow label="Biaya Proses" amount={r.shopee.biayaProses} />
+                    <div className="border-t border-teal-300/50 mt-1 pt-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-teal-800">HARGA JUAL</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-teal-800">{formatRupiah(r.shopee.hargaJualFinal)}</span>
-                          <CopyBtn text={r.shopee.hargaJualFinal.toString()} />
-                        </div>
+                        <span className="text-xs font-medium text-teal-700">Total Biaya ({r.shopee.totalBiayaPersen.toFixed(1)}%)</span>
+                        <span className="text-xs font-semibold text-teal-800">{formatRupiah(r.shopee.totalBiaya)}</span>
                       </div>
-                    </div>
-
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-teal-600">Dana diterima:</span>
-                        <span className={`text-xs font-semibold ${r.shopee.danaDiterima >= r.hargaNota ? "text-green-600" : "text-red-600"}`}>
-                          {formatRupiah(r.shopee.danaDiterima)}
-                        </span>
-                      </div>
-                      {bufferPersen > 0 && (
-                        <div className="flex items-center justify-between rounded bg-amber-50 px-2 py-1">
-                          <span className="text-[10px] text-amber-600">Buffer {bufferPersen}%:</span>
-                          <span className="text-[10px] font-semibold text-amber-700">+{formatRupiah(r.shopee.bufferAmount)}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
-                )}
 
-                {activePlatform === "tiktok" && (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded bg-gray-900 text-xs font-bold text-white">T</div>
-                      <span className="text-sm font-semibold text-gray-800">TikTok Shop</span>
-                    </div>
-
-                    {/* Fee breakdown */}
-                    <div className="space-y-0.5 mb-3">
-                      <FeeRow label="Komisi Platform" amount={r.tiktok.biayaAdmin} rate={TIKTOK_KOMISI_RATE} />
-                      <FeeRow label="Biaya Payment" amount={r.tiktok.biayaLiveXtra} rate={TIKTOK_PAYMENT_RATE} />
-                      {tiktokConfig.ikutFreeOngkir && (
-                        <FeeRow label="Free Ongkir" amount={r.tiktok.biayaGoXtra} rate={TIKTOK_FREE_ONGKIR_RATE} />
-                      )}
-                      {tiktokConfig.ikutFlashSale && (
-                        <FeeRow label="Flash Sale" amount={r.tiktok.biayaPromoXtra} rate={TIKTOK_FLASH_SALE_RATE} />
-                      )}
-                      <div className="border-t border-gray-200/50 mt-1 pt-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600">Total Biaya ({r.tiktok.totalBiayaPersen.toFixed(1)}%)</span>
-                          <span className="text-xs font-semibold text-gray-800">{formatRupiah(r.tiktok.totalBiaya)}</span>
-                        </div>
+                  {/* Final price */}
+                  <div className="rounded-md bg-teal-100 px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-teal-800">HARGA JUAL</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-teal-800">{formatRupiah(r.shopee.hargaJualFinal)}</span>
+                        <CopyBtn text={r.shopee.hargaJualFinal.toString()} />
                       </div>
-                    </div>
-
-                    {/* Final price */}
-                    <div className="rounded-md bg-gray-200 px-3 py-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-800">HARGA JUAL</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-gray-900">{formatRupiah(r.tiktok.hargaJualFinal)}</span>
-                          <CopyBtn text={r.tiktok.hargaJualFinal.toString()} />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400">Dana diterima:</span>
-                        <span className={`text-xs font-semibold ${r.tiktok.danaDiterima >= r.hargaNota ? "text-green-600" : "text-red-600"}`}>
-                          {formatRupiah(r.tiktok.danaDiterima)}
-                        </span>
-                      </div>
-                      {bufferPersen > 0 && (
-                        <div className="flex items-center justify-between rounded bg-amber-50 px-2 py-1">
-                          <span className="text-[10px] text-amber-600">Buffer {bufferPersen}%:</span>
-                          <span className="text-[10px] font-semibold text-amber-700">+{formatRupiah(r.tiktok.bufferAmount)}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
-                )}
+
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-teal-600">Dana diterima:</span>
+                      <span className={`text-xs font-semibold ${r.shopee.danaDiterima >= r.hargaNota ? "text-green-600" : "text-red-600"}`}>
+                        {formatRupiah(r.shopee.danaDiterima)}
+                      </span>
+                    </div>
+                    {bufferPersen > 0 && (
+                      <div className="flex items-center justify-between rounded bg-amber-50 px-2 py-1">
+                        <span className="text-[10px] text-amber-600">Buffer {bufferPersen}%:</span>
+                        <span className="text-[10px] font-semibold text-amber-700">+{formatRupiah(r.shopee.bufferAmount)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -1415,41 +1177,25 @@ export default function KalkulatorEmasPage() {
       {results.length === 0 && (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
           <p className="text-sm text-gray-400">
-            Masukkan harga per gram dan berat barang di atas untuk melihat hasil perhitungan secara real-time.
+            Masukkan harga emas di atas untuk melihat hasil perhitungan secara real-time.
           </p>
         </div>
       )}
 
       {/* Info Section */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-gray-800">Rincian Biaya {activePlatform === "shopee" ? "Shopee" : "TikTok Shop"}</h3>
-        {activePlatform === "shopee" ? (
-          <div className="rounded-lg bg-teal-50 p-3 space-y-1.5">
-            <p className="font-medium text-xs text-teal-800">Shopee - Perhiasan Berharga / Logam Mulia</p>
-            <ul className="text-[11px] text-teal-700/80 space-y-0.5">
-              <li>Biaya Admin Star/Star+ & Non-Star {">"}50: <strong>4.25%</strong></li>
-              <li>Non-Star {"≤"}50 pesanan: <strong>0% (Gratis)</strong></li>
-              <li>GO XTRA: <strong>1.5%</strong> (maks. Rp 20.000)</li>
-              <li>Promo XTRA: <strong>4.5%</strong> (maks. Rp 60.000)</li>
-              <li>Live XTRA: <strong>3%</strong> (maks. Rp 20.000), jadi <strong>2%</strong> jika ikut Promo XTRA</li>
-              <li>Pre Order: <strong>3%</strong></li>
-              <li>Biaya Proses Pesanan: <strong>Rp 1.250</strong> (flat)</li>
-            </ul>
-          </div>
-        ) : (
-          <div className="rounded-lg bg-gray-100 p-3 space-y-1.5">
-            <p className="font-medium text-xs text-gray-700">TikTok Shop - Perhiasan & Aksesoris</p>
-            <ul className="text-[11px] text-gray-500 space-y-0.5">
-              <li>Komisi Platform: <strong>5%</strong></li>
-              <li>Biaya Payment: <strong>1%</strong></li>
-              <li>Free Ongkir (opsional): <strong>1.5%</strong></li>
-              <li>Flash Sale (opsional): <strong>1%</strong></li>
-            </ul>
-            <p className="text-[10px] text-gray-400 mt-1">
-              * Rate bisa berbeda per seller tier & kategori. Selalu cek TikTok Seller Center.
-            </p>
-          </div>
-        )}
+        <h3 className="mb-3 text-sm font-semibold text-gray-800">Rincian Biaya Shopee</h3>
+        <div className="rounded-lg bg-teal-50 p-3 space-y-1.5">
+          <p className="font-medium text-xs text-teal-800">Shopee - Perhiasan Berharga / Logam Mulia</p>
+          <ul className="text-[11px] text-teal-700/80 space-y-0.5">
+            <li>Biaya Admin: <strong>4.25%</strong></li>
+            <li>GO XTRA: <strong>1.5%</strong> (maks. Rp 20.000)</li>
+            <li>Promo XTRA: <strong>4.5%</strong> (maks. Rp 60.000)</li>
+            <li>Live XTRA: <strong>3%</strong> (maks. Rp 20.000), jadi <strong>2%</strong> jika ikut Promo XTRA</li>
+            <li>Pre Order: <strong>3%</strong></li>
+            <li>Biaya Proses Pesanan: <strong>Rp 1.250</strong> (flat)</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
