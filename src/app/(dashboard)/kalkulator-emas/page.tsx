@@ -59,7 +59,6 @@ interface HasilBaris {
   berat?: number;
   totalModal: number;
   feeAmount: number;
-  biayaProses: number;
   hargaJualFinal: number;
 }
 
@@ -438,14 +437,13 @@ export default function KalkulatorEmasPage() {
   // Calculation
   // ---------------------------------------------------------------------------
 
-  function calcHargaJual(totalModal: number): { totalModal: number; feeAmount: number; biayaProses: number; hargaJualFinal: number } {
-    // Harga jual = (total modal x (1 + fee%)) + biaya proses per order
+  function calcHargaJual(totalModal: number): { totalModal: number; feeAmount: number; hargaJualFinal: number } {
+    // Harga jual = total modal x (1 + fee%)
     const feeAmount = totalModal * (feePersen / 100);
-    const biayaProses = 1250;
-    const hargaJualRaw = totalModal + feeAmount + biayaProses;
+    const hargaJualRaw = totalModal + feeAmount;
     // Bulatkan ke ribuan ke atas
     const hargaJualFinal = Math.ceil(hargaJualRaw / 1000) * 1000;
-    return { totalModal, feeAmount, biayaProses, hargaJualFinal };
+    return { totalModal, feeAmount, hargaJualFinal };
   }
 
 
@@ -506,7 +504,6 @@ export default function KalkulatorEmasPage() {
       berat: beratVal,
       totalModal: calc.totalModal,
       feeAmount: calc.feeAmount,
-      biayaProses: calc.biayaProses,
       hargaJualFinal: calc.hargaJualFinal,
     };
   }
@@ -1181,12 +1178,8 @@ export default function KalkulatorEmasPage() {
 
                     {/* Fee */}
                     <tr className="border-t border-dashed border-gray-200">
-                      <td className="pt-2 pb-1 text-xs text-teal-600">Fee {feePersen}% (admin + buffer)</td>
+                      <td className="pt-2 pb-1 text-xs text-teal-600">Charge Shopee ({feePersen}%)</td>
                       <td className="pt-2 pb-1 text-right text-xs text-teal-700">+ {formatRupiah(r.feeAmount)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5 text-xs text-teal-600">Biaya Proses / order</td>
-                      <td className="py-0.5 text-right text-xs text-teal-700">+ {formatRupiah(r.biayaProses)}</td>
                     </tr>
                   </tbody>
                 </table>
