@@ -506,6 +506,7 @@ export default function KalkulatorEmasPage() {
       berat: beratVal,
       totalModal: calc.totalModal,
       feeAmount: calc.feeAmount,
+      biayaProses: calc.biayaProses,
       hargaJualFinal: calc.hargaJualFinal,
     };
   }
@@ -1180,8 +1181,12 @@ export default function KalkulatorEmasPage() {
 
                     {/* Fee */}
                     <tr className="border-t border-dashed border-gray-200">
-                      <td className="pt-2 pb-1 text-xs text-teal-600">Fee Shopee ({feePersen}%)</td>
+                      <td className="pt-2 pb-1 text-xs text-teal-600">Fee {feePersen}% (admin + buffer)</td>
                       <td className="pt-2 pb-1 text-right text-xs text-teal-700">+ {formatRupiah(r.feeAmount)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 text-xs text-teal-600">Biaya Proses / order</td>
+                      <td className="py-0.5 text-right text-xs text-teal-700">+ {formatRupiah(r.biayaProses)}</td>
                     </tr>
                   </tbody>
                 </table>
