@@ -1346,91 +1346,102 @@ export default function KalkulatorEmasPage() {
                 </div>
               </div>
 
-              <div className="p-5">
-                {/* Common */}
-                <div className="mb-4 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Harga Nota</span>
-                    <span className="text-sm font-semibold text-gray-800">{formatRupiah(r.hargaNota)}</span>
-                  </div>
-                  {r.acrylicHarga > 0 && (
-                    <div className="flex items-center justify-between rounded bg-violet-50 px-2 py-1">
-                      <span className="text-sm text-violet-600">Akrilik: {r.acrylicNama}</span>
-                      <span className="text-sm font-semibold text-violet-700">+ {formatRupiah(r.acrylicHarga)}</span>
-                    </div>
-                  )}
-                  {r.designFee > 0 && (
-                    <div className="flex items-center justify-between rounded bg-violet-50 px-2 py-1">
-                      <span className="text-sm text-violet-600">Design / Custom</span>
-                      <span className="text-sm font-semibold text-violet-700">+ {formatRupiah(r.designFee)}</span>
-                    </div>
-                  )}
-                  {r.addonHarga > 0 && (
-                    <div className="flex items-center justify-between rounded bg-purple-50 px-2 py-1">
-                      <span className="text-sm text-purple-600">Box: {r.addonNama}</span>
-                      <span className="text-sm font-semibold text-purple-700">+ {formatRupiah(r.addonHarga)}</span>
-                    </div>
-                  )}
-                </div>
+              <div className="p-4">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {/* Komponen harga */}
+                    <tr>
+                      <td className="py-1 text-gray-500">Harga Nota</td>
+                      <td className="py-1 text-right font-medium text-gray-800">{formatRupiah(r.hargaNota)}</td>
+                    </tr>
+                    {bufferPersen > 0 && (
+                      <tr>
+                        <td className="py-1 text-amber-600">Buffer {bufferPersen}%</td>
+                        <td className="py-1 text-right font-medium text-amber-700">+ {formatRupiah(r.shopee.bufferAmount)}</td>
+                      </tr>
+                    )}
+                    {r.acrylicHarga > 0 && (
+                      <tr>
+                        <td className="py-1 text-violet-600">Akrilik: {r.acrylicNama}</td>
+                        <td className="py-1 text-right font-medium text-violet-700">+ {formatRupiah(r.acrylicHarga)}</td>
+                      </tr>
+                    )}
+                    {r.designFee > 0 && (
+                      <tr>
+                        <td className="py-1 text-violet-600">Design / Custom</td>
+                        <td className="py-1 text-right font-medium text-violet-700">+ {formatRupiah(r.designFee)}</td>
+                      </tr>
+                    )}
+                    {r.addonHarga > 0 && (
+                      <tr>
+                        <td className="py-1 text-purple-600">Box: {r.addonNama}</td>
+                        <td className="py-1 text-right font-medium text-purple-700">+ {formatRupiah(r.addonHarga)}</td>
+                      </tr>
+                    )}
 
-                <div className="border-t border-dashed border-gray-200 my-3" />
+                    {/* Target diterima */}
+                    <tr className="border-t border-gray-200">
+                      <td className="py-2 font-semibold text-gray-700">Target Diterima</td>
+                      <td className="py-2 text-right font-bold text-gray-900">{formatRupiah(r.shopee.targetDanaDiterima)}</td>
+                    </tr>
 
-                {/* Shopee result */}
-                <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded bg-teal-600 text-xs font-bold text-white">S</div>
-                    <span className="text-sm font-semibold text-teal-800">Shopee</span>
-                  </div>
-
-                  {/* Fee breakdown */}
-                  <div className="space-y-0.5 mb-3">
-                    <FeeRow label="Biaya Admin" amount={r.shopee.biayaAdmin} rate={r.shopee.adminRate} />
+                    {/* Fee Shopee */}
+                    <tr className="border-t border-dashed border-gray-200">
+                      <td className="pt-2 pb-1 text-xs text-teal-600">Fee Admin ({pct(r.shopee.adminRate)})</td>
+                      <td className="pt-2 pb-1 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaAdmin)}</td>
+                    </tr>
                     {r.shopee.biayaGoXtra > 0 && (
-                      <FeeRow label="GO XTRA" amount={r.shopee.biayaGoXtra} rate={r.shopee.goXtraRate} maxCap={SHOPEE_GO_XTRA_MAX} />
+                      <tr>
+                        <td className="py-0.5 text-xs text-teal-600">GO XTRA ({pct(r.shopee.goXtraRate)})</td>
+                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaGoXtra)}</td>
+                      </tr>
                     )}
                     {r.shopee.biayaPromoXtra > 0 && (
-                      <FeeRow label="Promo XTRA" amount={r.shopee.biayaPromoXtra} rate={r.shopee.promoXtraRate} maxCap={SHOPEE_PROMO_XTRA_MAX} />
+                      <tr>
+                        <td className="py-0.5 text-xs text-teal-600">Promo XTRA ({pct(r.shopee.promoXtraRate)})</td>
+                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaPromoXtra)}</td>
+                      </tr>
                     )}
                     {r.shopee.biayaLiveXtra > 0 && (
-                      <FeeRow label="Live XTRA" amount={r.shopee.biayaLiveXtra} rate={r.shopee.liveXtraRate} maxCap={SHOPEE_LIVE_XTRA_MAX} />
+                      <tr>
+                        <td className="py-0.5 text-xs text-teal-600">Live XTRA ({pct(r.shopee.liveXtraRate)})</td>
+                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaLiveXtra)}</td>
+                      </tr>
                     )}
                     {r.shopee.biayaPreOrder > 0 && (
-                      <FeeRow label="Pre Order" amount={r.shopee.biayaPreOrder} rate={r.shopee.preOrderRate} />
+                      <tr>
+                        <td className="py-0.5 text-xs text-teal-600">Pre Order ({pct(r.shopee.preOrderRate)})</td>
+                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaPreOrder)}</td>
+                      </tr>
                     )}
-                    <FeeRow label="Biaya Proses" amount={r.shopee.biayaProses} />
-                    <div className="border-t border-teal-300/50 mt-1 pt-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-teal-700">Total Biaya ({r.shopee.totalBiayaPersen.toFixed(1)}%)</span>
-                        <span className="text-xs font-semibold text-teal-800">{formatRupiah(r.shopee.totalBiaya)}</span>
-                      </div>
-                    </div>
-                  </div>
+                    <tr>
+                      <td className="py-0.5 text-xs text-teal-600">Biaya Proses</td>
+                      <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaProses)}</td>
+                    </tr>
+                    <tr className="border-t border-teal-200">
+                      <td className="py-1 text-xs font-medium text-teal-700">Total Fee ({r.shopee.totalBiayaPersen.toFixed(1)}%)</td>
+                      <td className="py-1 text-right text-xs font-semibold text-teal-800">- {formatRupiah(r.shopee.totalBiaya)}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-                  {/* Final price */}
-                  <div className="rounded-md bg-teal-100 px-3 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-teal-800">HARGA JUAL</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-teal-800">{formatRupiah(r.shopee.hargaJualFinal)}</span>
-                        <CopyBtn text={r.shopee.hargaJualFinal.toString()} />
-                      </div>
+                {/* Harga Jual Final */}
+                <div className="mt-3 rounded-lg bg-teal-600 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-white">HARGA JUAL</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold text-white">{formatRupiah(r.shopee.hargaJualFinal)}</span>
+                      <CopyBtn text={r.shopee.hargaJualFinal.toString()} />
                     </div>
                   </div>
+                </div>
 
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-teal-600">Dana diterima:</span>
-                      <span className={`text-xs font-semibold ${r.shopee.danaDiterima >= r.hargaNota ? "text-green-600" : "text-red-600"}`}>
-                        {formatRupiah(r.shopee.danaDiterima)}
-                      </span>
-                    </div>
-                    {bufferPersen > 0 && (
-                      <div className="flex items-center justify-between rounded bg-amber-50 px-2 py-1">
-                        <span className="text-[10px] text-amber-600">Buffer {bufferPersen}%:</span>
-                        <span className="text-[10px] font-semibold text-amber-700">+{formatRupiah(r.shopee.bufferAmount)}</span>
-                      </div>
-                    )}
-                  </div>
+                {/* Dana diterima */}
+                <div className="mt-2 flex items-center justify-between px-1">
+                  <span className="text-xs text-gray-500">Dana diterima setelah fee:</span>
+                  <span className={`text-sm font-bold ${r.shopee.danaDiterima >= r.shopee.targetDanaDiterima - 1 ? "text-green-600" : "text-red-600"}`}>
+                    {formatRupiah(r.shopee.danaDiterima)}
+                  </span>
                 </div>
               </div>
             </div>
