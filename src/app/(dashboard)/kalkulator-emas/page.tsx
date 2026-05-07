@@ -7,6 +7,17 @@ import { Plus, Trash2, RotateCcw, Copy, Check, Info, ChevronDown, ChevronUp } fr
 // Types
 // ---------------------------------------------------------------------------
 
+interface HargaPresetItem {
+  berat: string;
+  harga: number;
+}
+
+interface HargaPresetGroup {
+  id: string;
+  nama: string;
+  items: HargaPresetItem[];
+}
+
 interface AddonItem {
   id: string;
   nama: string;
@@ -309,6 +320,53 @@ export default function KalkulatorEmasPage() {
 
   // Buffer markup untuk fluktuasi harga emas
   const [bufferPersen, setBufferPersen] = useState(0);
+
+  // Preset harga emas hari ini
+  const [hargaPresets, setHargaPresets] = useState<HargaPresetGroup[]>([
+    {
+      id: "16k",
+      nama: "16K",
+      items: [
+        { berat: "0.5 gr", harga: 1066500 },
+        { berat: "1 gr", harga: 2033000 },
+        { berat: "2 gr", harga: 4066000 },
+        { berat: "3 gr", harga: 6099000 },
+        { berat: "5 gr", harga: 10165000 },
+        { berat: "10 gr", harga: 20330000 },
+      ],
+    },
+    {
+      id: "antam-classic",
+      nama: "Antam 24K (Classic)",
+      items: [
+        { berat: "1 gr", harga: 3142000 },
+        { berat: "2 gr", harga: 6264000 },
+        { berat: "3 gr", harga: 9219000 },
+        { berat: "5 gr", harga: 15410000 },
+      ],
+    },
+    {
+      id: "antam-press",
+      nama: "Antam 24K (Press)",
+      items: [
+        { berat: "0.5 gr", harga: 1660000 },
+        { berat: "1 gr", harga: 3304000 },
+        { berat: "2 gr", harga: 6616000 },
+        { berat: "3 gr", harga: 9805000 },
+        { berat: "5 gr", harga: 16349000 },
+      ],
+    },
+    {
+      id: "ubs-press",
+      nama: "UBS 24K (Press)",
+      items: [
+        { berat: "0.5 gr", harga: 1510000 },
+        { berat: "1 gr", harga: 2830000 },
+        { berat: "2 gr", harga: 5699000 },
+      ],
+    },
+  ]);
+  const [showHargaPresets, setShowHargaPresets] = useState(false);
 
   // Mode: normal vs akrilik PO
   const [mode, setMode] = useState<"normal" | "akrilik">("normal");
@@ -687,6 +745,121 @@ export default function KalkulatorEmasPage() {
               </div>
             </div>
 
+            {/* Harga Emas Hari Ini */}
+            <div className="mt-5 rounded-lg border border-yellow-200 bg-yellow-50/50 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-yellow-500 text-xs font-bold text-white">H</div>
+                  <span className="text-sm font-bold text-gray-800">Harga Emas Hari Ini</span>
+                </div>
+                <button
+                  onClick={() => setShowHargaPresets(!showHargaPresets)}
+                  className="text-xs text-yellow-700 hover:text-yellow-900 font-medium"
+                >
+                  {showHargaPresets ? "Tutup" : "Edit Harga"}
+                </button>
+              </div>
+              <p className="mb-3 text-xs text-gray-500">
+                Update harga emas di awal hari. Klik tombol preset di baris produk untuk isi otomatis.
+              </p>
+
+              {/* Preview */}
+              {!showHargaPresets && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {hargaPresets.map((group) => (
+                    <div key={group.id} className="rounded-md bg-yellow-100/60 px-3 py-2">
+                      <p className="text-xs font-semibold text-yellow-800 mb-1">{group.nama}</p>
+                      <div className="space-y-0.5">
+                        {group.items.map((item, i) => (
+                          <div key={i} className="flex justify-between text-[11px]">
+                            <span className="text-yellow-700">{item.berat}</span>
+                            <span className="font-medium text-yellow-900">{formatRupiah(item.harga)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Editable */}
+              {showHargaPresets && (
+                <div className="space-y-4 border-t border-yellow-200 pt-3">
+                  {hargaPresets.map((group, gIdx) => (
+                    <div key={group.id} className="rounded-md border border-yellow-200 bg-white p-3">
+                      <input
+                        type="text"
+                        value={group.nama}
+                        onChange={(e) => {
+                          const updated = [...hargaPresets];
+                          updated[gIdx] = { ...updated[gIdx], nama: e.target.value };
+                          setHargaPresets(updated);
+                        }}
+                        className="mb-2 w-full rounded border border-yellow-200 px-2 py-1 text-sm font-semibold text-gray-800 outline-none focus:border-yellow-400"
+                      />
+                      <div className="space-y-1.5">
+                        {group.items.map((item, iIdx) => (
+                          <div key={iIdx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={item.berat}
+                              onChange={(e) => {
+                                const updated = [...hargaPresets];
+                                updated[gIdx].items[iIdx] = { ...item, berat: e.target.value };
+                                setHargaPresets(updated);
+                              }}
+                              className="w-20 rounded border border-yellow-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-yellow-400"
+                            />
+                            <div className="relative flex-1">
+                              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">Rp</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={item.harga}
+                                onChange={(e) => {
+                                  const updated = [...hargaPresets];
+                                  updated[gIdx].items[iIdx] = { ...item, harga: Number(e.target.value) || 0 };
+                                  setHargaPresets(updated);
+                                }}
+                                className="w-full rounded border border-yellow-200 py-1 pl-7 pr-2 text-xs text-gray-800 outline-none focus:border-yellow-400"
+                              />
+                            </div>
+                            <button
+                              onClick={() => {
+                                const updated = [...hargaPresets];
+                                updated[gIdx].items.splice(iIdx, 1);
+                                setHargaPresets(updated);
+                              }}
+                              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            const updated = [...hargaPresets];
+                            updated[gIdx].items.push({ berat: "", harga: 0 });
+                            setHargaPresets(updated);
+                          }}
+                          className="text-[11px] text-yellow-600 hover:text-yellow-800 font-medium"
+                        >
+                          + Tambah berat
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setHargaPresets((prev) => [...prev, { id: generateId(), nama: "Kategori Baru", items: [{ berat: "1 gr", harga: 0 }] }])}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-yellow-300 px-3 py-2 text-xs font-medium text-yellow-600 transition hover:bg-yellow-100"
+                  >
+                    <Plus size={14} />
+                    Tambah Kategori
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Buffer Markup */}
             <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
               <div className="mb-3 flex items-center gap-2">
@@ -999,6 +1172,24 @@ export default function KalkulatorEmasPage() {
                   onChange={(val) => updateRow(row.id, "hargaEmas", val === "" ? "" : val)}
                   placeholder="2.033.000"
                 />
+                {/* Quick-fill preset buttons */}
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {hargaPresets.map((group) =>
+                    group.items.map((item, i) => (
+                      <button
+                        key={`${group.id}-${i}`}
+                        onClick={() => updateRow(row.id, "hargaEmas", item.harga)}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${
+                          row.hargaEmas === item.harga
+                            ? "bg-yellow-500 text-white"
+                            : "border border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+                        }`}
+                      >
+                        {group.nama} {item.berat}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-400 sm:hidden">Addon / Box</label>
