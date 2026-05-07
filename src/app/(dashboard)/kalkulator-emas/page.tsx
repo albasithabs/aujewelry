@@ -44,26 +44,7 @@ interface BarisItem {
   designFee: number | "";
 }
 
-interface BiayaPlatform {
-  adminRate: number;
-  biayaAdmin: number;
-  goXtraRate: number;
-  biayaGoXtra: number;
-  promoXtraRate: number;
-  biayaPromoXtra: number;
-  liveXtraRate: number;
-  biayaLiveXtra: number;
-  preOrderRate: number;
-  biayaPreOrder: number;
-  biayaProses: number;
-  totalBiaya: number;
-  totalBiayaPersen: number;
-  hargaJualSebelumCeil: number;
-  hargaJualFinal: number;
-  danaDiterima: number;
-  bufferAmount: number;
-  targetDanaDiterima: number;
-}
+
 
 interface HasilBaris {
   id: string;
@@ -76,33 +57,12 @@ interface HasilBaris {
   designFee: number;
   hargaPerGram?: number;
   berat?: number;
-  shopee: BiayaPlatform;
+  totalModal: number;
+  feeAmount: number;
+  hargaJualFinal: number;
 }
 
-// ---------------------------------------------------------------------------
-// Shopee config for Perhiasan/Emas
-// ---------------------------------------------------------------------------
 
-interface ShopeeConfig {
-  statusPenjual: "star" | "non-star";
-  jumlahPesanan: "lte50" | "gt50";
-  ikutGoXtra: boolean;
-  ikutPromoXtra: boolean;
-  ikutLiveXtra: boolean;
-  isPreOrder: boolean;
-}
-
-// Rates for Perhiasan Berharga / Logam Mulia
-const SHOPEE_ADMIN_RATE = 0.0425; // 4.25%
-const SHOPEE_GO_XTRA_RATE = 0.015; // 1.5%
-const SHOPEE_GO_XTRA_MAX = 20000;
-const SHOPEE_PROMO_XTRA_RATE = 0.045; // 4.5%
-const SHOPEE_PROMO_XTRA_MAX = 60000;
-const SHOPEE_LIVE_XTRA_RATE = 0.03; // 3%
-const SHOPEE_LIVE_XTRA_RATE_WITH_PROMO = 0.02; // 2% jika ikut Promo XTRA
-const SHOPEE_LIVE_XTRA_MAX = 20000;
-const SHOPEE_PRE_ORDER_RATE = 0.03; // 3%
-const SHOPEE_BIAYA_PROSES = 1250;
 
 
 
@@ -311,20 +271,12 @@ function FeeRow({
 // ---------------------------------------------------------------------------
 
 export default function KalkulatorEmasPage() {
-  // Shopee settings
-  const [shopeeConfig, setShopeeConfig] = useState<ShopeeConfig>({
-    statusPenjual: "star",
-    jumlahPesanan: "lte50",
-    ikutGoXtra: false,
-    ikutPromoXtra: false,
-    ikutLiveXtra: false,
-    isPreOrder: false,
-  });
+  // Fee percentage (simpel: langsung kali)
+  const [feePersen, setFeePersen] = useState(6);
 
 
 
-  // Buffer markup untuk fluktuasi harga emas
-  const [bufferPersen, setBufferPersen] = useState(0);
+
 
   // Preset harga emas hari ini
   const [hargaPresets, setHargaPresets] = useState<HargaPresetGroup[]>([
@@ -452,15 +404,7 @@ export default function KalkulatorEmasPage() {
 
   const resetAll = () => {
     setRows([{ id: generateId(), label: "", hargaPerGram: "", berat: "", hargaEmas: "", addonId: "", acrylicId: "", designFee: "" }]);
-    setShopeeConfig({
-      statusPenjual: "star",
-      jumlahPesanan: "lte50",
-      ikutGoXtra: false,
-      ikutPromoXtra: false,
-      ikutLiveXtra: false,
-      isPreOrder: false,
-    });
-    setBufferPersen(0);
+    setFeePersen(6);
   };
 
   // Addon management
@@ -493,85 +437,13 @@ export default function KalkulatorEmasPage() {
   // Calculation
   // ---------------------------------------------------------------------------
 
-  function calcShopee(hargaNota: number, addonHarga: number = 0): BiayaPlatform {
-    // Buffer: target dana diterima = harga nota + addon + buffer
-    const bufferAmount = hargaNota * (bufferPersen / 100);
-    const targetDanaDiterima = hargaNota + addonHarga + bufferAmount;
-
-    // Admin rate (4.25% untuk semua status)
-    const adminRate = SHOPEE_ADMIN_RATE;
-
-    // GO XTRA
-    const goXtraRate = shopeeConfig.ikutGoXtra ? SHOPEE_GO_XTRA_RATE : 0;
-
-    // Promo XTRA
-    const promoXtraRate = shopeeConfig.ikutPromoXtra ? SHOPEE_PROMO_XTRA_RATE : 0;
-
-    // Live XTRA (2% jika ikut Promo XTRA juga, 3% jika tidak)
-    let liveXtraRate = 0;
-    if (shopeeConfig.ikutLiveXtra) {
-      liveXtraRate = shopeeConfig.ikutPromoXtra
-        ? SHOPEE_LIVE_XTRA_RATE_WITH_PROMO
-        : SHOPEE_LIVE_XTRA_RATE;
-    }
-
-    // Pre Order
-    const preOrderRate = shopeeConfig.isPreOrder ? SHOPEE_PRE_ORDER_RATE : 0;
-
-    // Biaya proses
-    const biayaProses = SHOPEE_BIAYA_PROSES;
-
-    // Reverse calc: find hargaJual so that hargaJual - fees(hargaJual) = targetDanaDiterima
-    const totalRateUncapped = adminRate + goXtraRate + promoXtraRate + liveXtraRate + preOrderRate;
-    let hargaJualSebelumCeil = targetDanaDiterima / (1 - totalRateUncapped) + biayaProses / (1 - totalRateUncapped);
-
-    // Iterative adjustment for capped fees
-    for (let i = 0; i < 5; i++) {
-      const h = hargaJualSebelumCeil;
-      const aAdmin = h * adminRate;
-      const aGoXtra = shopeeConfig.ikutGoXtra ? Math.min(h * SHOPEE_GO_XTRA_RATE, SHOPEE_GO_XTRA_MAX) : 0;
-      const aPromoXtra = shopeeConfig.ikutPromoXtra ? Math.min(h * SHOPEE_PROMO_XTRA_RATE, SHOPEE_PROMO_XTRA_MAX) : 0;
-      const aLiveXtra = shopeeConfig.ikutLiveXtra ? Math.min(h * liveXtraRate, SHOPEE_LIVE_XTRA_MAX) : 0;
-      const aPreOrder = shopeeConfig.isPreOrder ? h * SHOPEE_PRE_ORDER_RATE : 0;
-      const aTotal = aAdmin + aGoXtra + aPromoXtra + aLiveXtra + aPreOrder + biayaProses;
-      const danaTerima = h - aTotal;
-      if (Math.abs(danaTerima - targetDanaDiterima) < 1) break;
-      hargaJualSebelumCeil = h + (targetDanaDiterima - danaTerima);
-    }
-
-    const hargaJualFinal = Math.ceil(hargaJualSebelumCeil);
-
-    // Recalculate actual fees at final price
-    const actualAdmin = hargaJualFinal * adminRate;
-    const actualGoXtra = shopeeConfig.ikutGoXtra ? Math.min(hargaJualFinal * SHOPEE_GO_XTRA_RATE, SHOPEE_GO_XTRA_MAX) : 0;
-    const actualPromoXtra = shopeeConfig.ikutPromoXtra ? Math.min(hargaJualFinal * SHOPEE_PROMO_XTRA_RATE, SHOPEE_PROMO_XTRA_MAX) : 0;
-    const actualLiveXtra = shopeeConfig.ikutLiveXtra ? Math.min(hargaJualFinal * liveXtraRate, SHOPEE_LIVE_XTRA_MAX) : 0;
-    const actualPreOrder = shopeeConfig.isPreOrder ? hargaJualFinal * SHOPEE_PRE_ORDER_RATE : 0;
-    const actualTotal = actualAdmin + actualGoXtra + actualPromoXtra + actualLiveXtra + actualPreOrder + biayaProses;
-    const danaDiterima = hargaJualFinal - actualTotal;
-
-    const totalBiayaPersen = hargaJualFinal > 0 ? (actualTotal / hargaJualFinal) * 100 : 0;
-
-    return {
-      adminRate,
-      biayaAdmin: actualAdmin,
-      goXtraRate,
-      biayaGoXtra: actualGoXtra,
-      promoXtraRate,
-      biayaPromoXtra: actualPromoXtra,
-      liveXtraRate,
-      biayaLiveXtra: actualLiveXtra,
-      preOrderRate,
-      biayaPreOrder: actualPreOrder,
-      biayaProses,
-      totalBiaya: actualTotal,
-      totalBiayaPersen,
-      hargaJualSebelumCeil,
-      hargaJualFinal,
-      danaDiterima,
-      bufferAmount,
-      targetDanaDiterima,
-    };
+  function calcHargaJual(totalModal: number): { totalModal: number; feeAmount: number; hargaJualFinal: number } {
+    // Simpel: harga jual = total modal x (1 + fee%)
+    const feeAmount = totalModal * (feePersen / 100);
+    const hargaJualRaw = totalModal + feeAmount;
+    // Bulatkan ke ribuan ke atas
+    const hargaJualFinal = Math.ceil(hargaJualRaw / 1000) * 1000;
+    return { totalModal, feeAmount, hargaJualFinal };
   }
 
 
@@ -615,6 +487,10 @@ export default function KalkulatorEmasPage() {
     // Total tambahan di atas harga nota
     const totalAddon = addonHarga + acrylicHarga + designFee;
 
+    // Total modal = harga nota + semua addon
+    const totalModal = hargaNota + totalAddon;
+    const calc = calcHargaJual(totalModal);
+
     return {
       id: row.id,
       label: row.label || `Baris ${idx + 1}`,
@@ -626,7 +502,9 @@ export default function KalkulatorEmasPage() {
       designFee,
       hargaPerGram: hargaPerGramVal,
       berat: beratVal,
-      shopee: calcShopee(hargaNota, totalAddon),
+      totalModal: calc.totalModal,
+      feeAmount: calc.feeAmount,
+      hargaJualFinal: calc.hargaJualFinal,
     };
   }
 
@@ -692,84 +570,45 @@ export default function KalkulatorEmasPage() {
 
         {showSettings && (
           <div className="border-t border-gray-100 px-5 pb-5">
-            <div className="grid gap-5 pt-4">
-              {/* ---- SHOPEE ---- */}
-              <div className="rounded-lg border border-teal-300 bg-teal-50/50 p-4">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-xs font-bold text-white">S</div>
-                  <span className="text-sm font-bold text-gray-800">Shopee</span>
-                  <span className="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-medium text-teal-700">
-                    Perhiasan / Logam Mulia
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Status Penjual */}
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium text-gray-600">Status Penjual</p>
-                    <div className="flex flex-wrap gap-3">
-                      <RadioOption
-                        name="shopee-status"
-                        value="star"
-                        checked={shopeeConfig.statusPenjual === "star"}
-                        onChange={() => setShopeeConfig((c) => ({ ...c, statusPenjual: "star" }))}
-                        label="Star / Star+"
-                      />
-                      <RadioOption
-                        name="shopee-status"
-                        value="non-star"
-                        checked={shopeeConfig.statusPenjual === "non-star"}
-                        onChange={() => setShopeeConfig((c) => ({ ...c, statusPenjual: "non-star" }))}
-                        label="Non-Star"
-                      />
-                    </div>
-                  </div>
-
-
-
-                  <div className="border-t border-teal-300/50 pt-3 space-y-2.5">
-                    <p className="text-xs font-medium text-gray-600">Program & Layanan</p>
-                    <ToggleOption
-                      label="GO XTRA"
-                      detail={`${pct(SHOPEE_GO_XTRA_RATE)}, maks ${formatRupiah(SHOPEE_GO_XTRA_MAX)}`}
-                      checked={shopeeConfig.ikutGoXtra}
-                      onChange={(v) => setShopeeConfig((c) => ({ ...c, ikutGoXtra: v }))}
-                      accent="bg-teal-600"
-                    />
-                    <ToggleOption
-                      label="Promo XTRA"
-                      detail={`${pct(SHOPEE_PROMO_XTRA_RATE)}, maks ${formatRupiah(SHOPEE_PROMO_XTRA_MAX)}`}
-                      checked={shopeeConfig.ikutPromoXtra}
-                      onChange={(v) => setShopeeConfig((c) => ({ ...c, ikutPromoXtra: v }))}
-                      accent="bg-teal-600"
-                    />
-                    <ToggleOption
-                      label="Live XTRA"
-                      detail={
-                        shopeeConfig.ikutPromoXtra
-                          ? `${pct(SHOPEE_LIVE_XTRA_RATE_WITH_PROMO)} (diskon karena ikut Promo XTRA)`
-                          : `${pct(SHOPEE_LIVE_XTRA_RATE)}, maks ${formatRupiah(SHOPEE_LIVE_XTRA_MAX)}`
-                      }
-                      checked={shopeeConfig.ikutLiveXtra}
-                      onChange={(v) => setShopeeConfig((c) => ({ ...c, ikutLiveXtra: v }))}
-                      accent="bg-teal-600"
-                    />
-                    <ToggleOption
-                      label="Pre Order"
-                      detail={pct(SHOPEE_PRE_ORDER_RATE)}
-                      checked={shopeeConfig.isPreOrder}
-                      onChange={(v) => setShopeeConfig((c) => ({ ...c, isPreOrder: v }))}
-                      accent="bg-teal-600"
-                    />
-                  </div>
-
-                  <div className="rounded-md bg-teal-100/60 px-3 py-2">
-                    <p className="text-[10px] text-teal-700">
-                      + Biaya Proses Pesanan: {formatRupiah(SHOPEE_BIAYA_PROSES)} (flat per pesanan)
-                    </p>
-                  </div>
+            {/* Fee Percentage */}
+            <div className="mt-4 rounded-lg border border-teal-300 bg-teal-50/50 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-xs font-bold text-white">%</div>
+                <span className="text-sm font-bold text-gray-800">Fee / Charge Shopee</span>
+              </div>
+              <p className="mb-3 text-xs text-gray-500">
+                Persentase fee yang ditambahkan ke total modal untuk menentukan harga jual.
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  step="0.5"
+                  min={0}
+                  max={50}
+                  value={feePersen}
+                  onChange={(e) => setFeePersen(Number(e.target.value) || 0)}
+                  className="w-20 rounded-lg border border-teal-300 bg-white px-3 py-2 text-center text-sm font-semibold text-gray-800 outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
+                />
+                <span className="text-sm text-gray-600">%</span>
+                <div className="ml-auto flex gap-1.5">
+                  {[4.5, 5, 6, 7, 8].map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setFeePersen(v)}
+                      className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+                        feePersen === v
+                          ? "bg-teal-600 text-white"
+                          : "border border-teal-200 bg-white text-teal-700 hover:bg-teal-50"
+                      }`}
+                    >
+                      {v}%
+                    </button>
+                  ))}
                 </div>
               </div>
+              <p className="mt-2 text-xs text-teal-600">
+                Rumus: Harga Jual = Total Modal x (1 + {feePersen}%) → bulatkan ke ribuan ke atas
+              </p>
             </div>
 
             {/* Harga Emas Hari Ini - hanya mode Akrilik */}
@@ -889,49 +728,7 @@ export default function KalkulatorEmasPage() {
             </div>
             )}
 
-            {/* Buffer Markup */}
-            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-xs font-bold text-white">%</div>
-                <span className="text-sm font-bold text-gray-800">Buffer Markup Harga</span>
-              </div>
-              <p className="mb-3 text-xs text-gray-500">
-                Tambahan persentase di atas Harga Nota untuk mengantisipasi fluktuasi harga emas.
-                Dengan buffer, Anda tidak perlu ganti harga produk setiap kali harga emas naik-turun.
-              </p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  max={50}
-                  value={bufferPersen}
-                  onChange={(e) => setBufferPersen(Number(e.target.value) || 0)}
-                  className="w-24 rounded-lg border border-amber-300 bg-white px-3 py-2 text-center text-sm font-semibold text-gray-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-                />
-                <span className="text-sm text-gray-600">%</span>
-                <div className="ml-auto flex gap-1.5">
-                  {[0, 1, 2, 3, 5].map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setBufferPersen(v)}
-                      className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                        bufferPersen === v
-                          ? "bg-amber-500 text-white"
-                          : "border border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
-                      }`}
-                    >
-                      {v}%
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {bufferPersen > 0 && (
-                <p className="mt-2 text-xs text-amber-600">
-                  Dana diterima = Harga Nota + {bufferPersen}% buffer. Contoh: Nota Rp 1.000.000 → target terima Rp {formatRupiah(1000000 * (1 + bufferPersen / 100))}
-                </p>
-              )}
-            </div>
+
 
             {/* Addon Settings */}
             <div className="mt-5 rounded-lg border border-purple-200 bg-purple-50/50 p-4">
@@ -1103,8 +900,8 @@ export default function KalkulatorEmasPage() {
             {/* Explanation */}
             <div className="mt-4 rounded-lg bg-blue-50 px-4 py-3">
               <p className="text-xs text-blue-700">
-                <strong>Cara kerja:</strong> Sistem menghitung harga jual (FINAL) sehingga setelah dipotong <em>semua</em> biaya platform,
-                dana yang Anda terima = Harga Nota{bufferPersen > 0 ? ` + buffer ${bufferPersen}%` : ""}{addonList.length > 0 ? " + biaya addon (jika dipilih)" : ""}. Biaya yang memiliki cap/maksimum juga diperhitungkan secara akurat.
+                <strong>Cara kerja:</strong> Harga Jual = Total Modal x (1 + {feePersen}%), dibulatkan ke ribuan ke atas.
+                Total Modal = Harga Emas{addonList.length > 0 ? " + Box" : ""}{mode === "akrilik" ? " + Akrilik + Design" : ""}.
               </p>
             </div>
           </div>
@@ -1351,15 +1148,9 @@ export default function KalkulatorEmasPage() {
                   <tbody>
                     {/* Komponen harga */}
                     <tr>
-                      <td className="py-1 text-gray-500">Harga Nota</td>
+                      <td className="py-1 text-gray-500">Harga Emas</td>
                       <td className="py-1 text-right font-medium text-gray-800">{formatRupiah(r.hargaNota)}</td>
                     </tr>
-                    {bufferPersen > 0 && (
-                      <tr>
-                        <td className="py-1 text-amber-600">Buffer {bufferPersen}%</td>
-                        <td className="py-1 text-right font-medium text-amber-700">+ {formatRupiah(r.shopee.bufferAmount)}</td>
-                      </tr>
-                    )}
                     {r.acrylicHarga > 0 && (
                       <tr>
                         <td className="py-1 text-violet-600">Akrilik: {r.acrylicNama}</td>
@@ -1379,48 +1170,16 @@ export default function KalkulatorEmasPage() {
                       </tr>
                     )}
 
-                    {/* Target diterima */}
+                    {/* Total Modal */}
                     <tr className="border-t border-gray-200">
-                      <td className="py-2 font-semibold text-gray-700">Target Diterima</td>
-                      <td className="py-2 text-right font-bold text-gray-900">{formatRupiah(r.shopee.targetDanaDiterima)}</td>
+                      <td className="py-2 font-semibold text-gray-700">Total Modal</td>
+                      <td className="py-2 text-right font-bold text-gray-900">{formatRupiah(r.totalModal)}</td>
                     </tr>
 
-                    {/* Fee Shopee */}
+                    {/* Fee */}
                     <tr className="border-t border-dashed border-gray-200">
-                      <td className="pt-2 pb-1 text-xs text-teal-600">Fee Admin ({pct(r.shopee.adminRate)})</td>
-                      <td className="pt-2 pb-1 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaAdmin)}</td>
-                    </tr>
-                    {r.shopee.biayaGoXtra > 0 && (
-                      <tr>
-                        <td className="py-0.5 text-xs text-teal-600">GO XTRA ({pct(r.shopee.goXtraRate)})</td>
-                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaGoXtra)}</td>
-                      </tr>
-                    )}
-                    {r.shopee.biayaPromoXtra > 0 && (
-                      <tr>
-                        <td className="py-0.5 text-xs text-teal-600">Promo XTRA ({pct(r.shopee.promoXtraRate)})</td>
-                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaPromoXtra)}</td>
-                      </tr>
-                    )}
-                    {r.shopee.biayaLiveXtra > 0 && (
-                      <tr>
-                        <td className="py-0.5 text-xs text-teal-600">Live XTRA ({pct(r.shopee.liveXtraRate)})</td>
-                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaLiveXtra)}</td>
-                      </tr>
-                    )}
-                    {r.shopee.biayaPreOrder > 0 && (
-                      <tr>
-                        <td className="py-0.5 text-xs text-teal-600">Pre Order ({pct(r.shopee.preOrderRate)})</td>
-                        <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaPreOrder)}</td>
-                      </tr>
-                    )}
-                    <tr>
-                      <td className="py-0.5 text-xs text-teal-600">Biaya Proses</td>
-                      <td className="py-0.5 text-right text-xs text-teal-700">- {formatRupiah(r.shopee.biayaProses)}</td>
-                    </tr>
-                    <tr className="border-t border-teal-200">
-                      <td className="py-1 text-xs font-medium text-teal-700">Total Fee ({r.shopee.totalBiayaPersen.toFixed(1)}%)</td>
-                      <td className="py-1 text-right text-xs font-semibold text-teal-800">- {formatRupiah(r.shopee.totalBiaya)}</td>
+                      <td className="pt-2 pb-1 text-xs text-teal-600">Fee Shopee ({feePersen}%)</td>
+                      <td className="pt-2 pb-1 text-right text-xs text-teal-700">+ {formatRupiah(r.feeAmount)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1430,18 +1189,10 @@ export default function KalkulatorEmasPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-white">HARGA JUAL</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold text-white">{formatRupiah(r.shopee.hargaJualFinal)}</span>
-                      <CopyBtn text={r.shopee.hargaJualFinal.toString()} />
+                      <span className="text-xl font-bold text-white">{formatRupiah(r.hargaJualFinal)}</span>
+                      <CopyBtn text={r.hargaJualFinal.toString()} />
                     </div>
                   </div>
-                </div>
-
-                {/* Dana diterima */}
-                <div className="mt-2 flex items-center justify-between px-1">
-                  <span className="text-xs text-gray-500">Dana diterima setelah fee:</span>
-                  <span className={`text-sm font-bold ${r.shopee.danaDiterima >= r.shopee.targetDanaDiterima - 1 ? "text-green-600" : "text-red-600"}`}>
-                    {formatRupiah(r.shopee.danaDiterima)}
-                  </span>
                 </div>
               </div>
             </div>
@@ -1462,17 +1213,17 @@ export default function KalkulatorEmasPage() {
 
       {/* Info Section */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-gray-800">Rincian Biaya Shopee</h3>
+        <h3 className="mb-3 text-sm font-semibold text-gray-800">Rumus Perhitungan</h3>
         <div className="rounded-lg bg-teal-50 p-3 space-y-1.5">
-          <p className="font-medium text-xs text-teal-800">Shopee - Perhiasan Berharga / Logam Mulia</p>
+          <p className="font-medium text-xs text-teal-800">Harga Jual = Total Modal x (1 + Fee {feePersen}%)</p>
           <ul className="text-[11px] text-teal-700/80 space-y-0.5">
-            <li>Biaya Admin: <strong>4.25%</strong></li>
-            <li>GO XTRA: <strong>1.5%</strong> (maks. Rp 20.000)</li>
-            <li>Promo XTRA: <strong>4.5%</strong> (maks. Rp 60.000)</li>
-            <li>Live XTRA: <strong>3%</strong> (maks. Rp 20.000), jadi <strong>2%</strong> jika ikut Promo XTRA</li>
-            <li>Pre Order: <strong>3%</strong></li>
-            <li>Biaya Proses Pesanan: <strong>Rp 1.250</strong> (flat)</li>
+            <li>Total Modal = Harga Emas + Addon (Box, Akrilik, Design)</li>
+            <li>Fee Shopee: <strong>{feePersen}%</strong> (bisa diatur di pengaturan)</li>
+            <li>Pembulatan: ke <strong>ribuan ke atas</strong></li>
           </ul>
+          <p className="text-[10px] text-teal-600 mt-2">
+            Contoh: Rp 1.660.000 x 1.06 = Rp 1.759.600 → dibulatkan = <strong>Rp 1.760.000</strong>
+          </p>
         </div>
       </div>
     </div>
