@@ -526,6 +526,16 @@ export default function KalkulatorShopeePage() {
         </p>
       </div>
 
+      {/* Penjelasan */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+        <p className="text-xs text-blue-700">
+          <strong>Fungsi:</strong> Mengecek berapa <strong>potongan biaya Shopee</strong> dan <strong>dana yang kamu terima</strong> dari harga produk yang sudah kamu tentukan.
+        </p>
+        <p className="mt-1 text-[11px] text-blue-600">
+          💡 Beda dengan Kalkulator Emas yang fungsinya untuk <em>menentukan harga jual</em> supaya dana diterima ≥ modal.
+        </p>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-5">
         {/* ----------------------------------------------------------------- */}
         {/* LEFT: Input form                                                   */}
@@ -784,45 +794,37 @@ export default function KalkulatorShopeePage() {
                     }
                   />
 
-                  {hasil.biayaGoXtra > 0 && (
-                    <ResultRow
-                      label="Biaya GO XTRA"
-                      amount={hasil.biayaGoXtra}
-                      rate={hasil.goXtraRate}
-                      maxCap={hasil.goXtraMax}
-                    />
-                  )}
+                  <ResultRow
+                    label="Biaya GO XTRA"
+                    amount={hasil.biayaGoXtra}
+                    rate={hasil.goXtraRate}
+                    maxCap={hasil.goXtraMax}
+                  />
 
-                  {hasil.biayaPromoXtra > 0 && (
-                    <ResultRow
-                      label="Biaya Promo XTRA"
-                      amount={hasil.biayaPromoXtra}
-                      rate={hasil.promoXtraRate}
-                      maxCap={hasil.promoXtraMax}
-                    />
-                  )}
+                  <ResultRow
+                    label="Biaya Promo XTRA"
+                    amount={hasil.biayaPromoXtra}
+                    rate={hasil.promoXtraRate}
+                    maxCap={hasil.promoXtraMax}
+                  />
 
-                  {hasil.biayaLiveXtra > 0 && (
-                    <ResultRow
-                      label="Biaya Live XTRA"
-                      amount={hasil.biayaLiveXtra}
-                      rate={hasil.liveXtraRate}
-                      maxCap={hasil.liveXtraMax}
-                      note={
-                        hasil.ikutPromoXtra && hasil.ikutLiveXtra
-                          ? "Diskon 2% karena ikut Promo XTRA"
-                          : undefined
-                      }
-                    />
-                  )}
+                  <ResultRow
+                    label="Biaya Live XTRA"
+                    amount={hasil.biayaLiveXtra}
+                    rate={hasil.liveXtraRate}
+                    maxCap={hasil.liveXtraMax}
+                    note={
+                      hasil.ikutPromoXtra && hasil.ikutLiveXtra
+                        ? "Diskon 2% karena ikut Promo XTRA"
+                        : undefined
+                    }
+                  />
 
-                  {hasil.biayaPreOrder > 0 && (
-                    <ResultRow
-                      label="Biaya Pre Order"
-                      amount={hasil.biayaPreOrder}
-                      rate={hasil.preOrderRate}
-                    />
-                  )}
+                  <ResultRow
+                    label="Biaya Pre Order"
+                    amount={hasil.biayaPreOrder}
+                    rate={hasil.preOrderRate}
+                  />
 
                   <ResultRow
                     label="Biaya Proses Pesanan"
